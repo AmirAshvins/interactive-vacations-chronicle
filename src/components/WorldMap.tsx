@@ -50,6 +50,7 @@ type ParsedNode =
   | { type: 'g'; data: ParsedGroup };
 
 const MAP_VIEWBOX = '30.767 241.591 784.077 458.627';
+const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}world-map.svg`;
 
 /** Top-down plane silhouette — nose points +X for rotate="auto" */
 const PLANE_PATH = 'M 0 0 L 11 -0.8 L 13 0 L 11 0.8 Z M 2.5 -3.2 L 7 -0.8 L 2.5 -0.8 Z M 2.5 0.8 L 7 0.8 L 2.5 3.2 Z';
@@ -78,7 +79,7 @@ export default function WorldMap({
   const materialClass = `material-${activeMaterial}`;
 
   useEffect(() => {
-    fetch('/world-map.svg')
+    fetch(WORLD_MAP_SVG_URL)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load map asset');
         return res.text();
