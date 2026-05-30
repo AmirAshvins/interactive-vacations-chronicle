@@ -1,0 +1,623 @@
+@import "tailwindcss";
+
+:root {
+  /* Solar Study variables - driven dynamically by JavaScript */
+  --wall-bg: #ffffff;
+  --shadow-dx: 0px;
+  --shadow-dy: 3px;
+  --shadow-blur: 6px;
+  --shadow-opacity: 0.14;
+  --spotlight-opacity: 0.0;
+  --glow-color: rgba(255, 255, 255, 0.3);
+  --text-color: rgba(28, 28, 30, 0.6);
+  --grid-opacity: 0.03;
+  --accent-brass: #d4af37;
+  --solar-transition: 1500ms ease-in-out;
+
+  /* UI theme — synced with solar clock */
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(60, 48, 32, 0.1);
+  --panel-text: #2c2c2a;
+  --panel-muted: #7c7c78;
+  --panel-surface: rgba(60, 48, 32, 0.04);
+  --dock-bg: rgba(255, 255, 255, 0.92);
+  --dock-border: rgba(60, 48, 32, 0.1);
+  --frame-border: rgba(92, 72, 48, 0.12);
+  --frame-shadow: inset 0 0 48px rgba(92, 72, 48, 0.03);
+  --flight-stroke: #a58452;
+  --flight-stroke-width: 1.15;
+  --flight-plane-fill: #b8956a;
+  --flight-plane-stroke: rgba(255, 255, 255, 0.75);
+  --landmass-stroke: rgba(92, 72, 48, 0.14);
+  --landmass-stroke-width: 0.35;
+  
+  /* Font Family Definitions */
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Plaster Wall Surface Texture Overlay */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--wall-bg);
+  font-family: var(--font-sans);
+  color: var(--text-color);
+  width: 100vw;
+  height: 100vh;
+  transition: background var(--solar-transition);
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Full-viewport map stage with premium inset margins */
+.map-stage {
+  position: absolute;
+  inset: clamp(32px, 5vh, 64px) clamp(32px, 4vw, 72px) clamp(96px, 10vh, 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+}
+
+.map-transform-layer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.map-aspect-box {
+  position: relative;
+  width: min(100%, calc((100vh - 180px) * 1.71));
+  height: min(100%, calc(100vw / 1.71));
+  max-width: 1280px;
+  aspect-ratio: 784.077 / 458.627;
+}
+
+.map-aspect-box .world-map-svg,
+.map-aspect-box .flight-layer {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Midnight spotlight lighting overlay */
+.spotlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 235, 180, 0.08) 0%, rgba(0,0,0,0) 70%);
+  pointer-events: none;
+  z-index: 2;
+  opacity: var(--spotlight-opacity);
+  transition: opacity var(--solar-transition);
+}
+
+/* Architect Coordinate Gridlines Overlay */
+.blueprint-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center;
+  z-index: 2;
+  opacity: var(--grid-opacity);
+  transition: opacity var(--solar-transition);
+}
+
+/* Country landmass paths only — flight arcs must never inherit fill */
+#world-map path.landmass {
+  fill: currentColor;
+  stroke: var(--landmass-stroke);
+  stroke-width: var(--landmass-stroke-width);
+  paint-order: stroke fill;
+  cursor: pointer;
+  transition:
+    fill var(--solar-transition),
+    stroke var(--solar-transition);
+}
+
+#world-map path.landmass.hovered-country {
+  fill: #b59563 !important;
+  stroke: rgba(92, 68, 38, 0.35);
+}
+
+/* Wood Textures via CSS Gradients */
+.material-oak {
+  color: #d2c1a5;
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.05) 100%);
+  transition: color var(--solar-transition);
+}
+.material-cork {
+  color: #cca87c;
+  transition: color var(--solar-transition);
+}
+.material-walnut {
+  color: #3b2c23;
+  transition: color var(--solar-transition);
+}
+
+/* Walnut keeps a subtle outer edge on the SVG shell */
+.material-walnut.world-map-svg {
+  outline: 0.5px solid rgba(212, 175, 55, 0.12);
+  outline-offset: -0.5px;
+}
+
+/* Double-layered SVG dynamic filter shadow mapping */
+.world-map-svg {
+  filter: drop-shadow(var(--shadow-dx) var(--shadow-dy) var(--shadow-blur) rgba(0, 0, 0, calc(var(--shadow-opacity) * 1.5)))
+          drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.15));
+  transition:
+    filter var(--solar-transition),
+    color var(--solar-transition);
+}
+
+/* Individual country groups */
+#world-map > g > g {
+  cursor: pointer;
+}
+
+/* Netflix-Style Auto-Hide Overlay Transitions */
+.tv-hud-element {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.tv-hud-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(15px);
+  pointer-events: none;
+}
+
+.tv-hud-hidden-left {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-40px);
+  pointer-events: none;
+}
+
+.tv-hud-hidden-right {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(40px);
+  pointer-events: none;
+}
+
+.tv-hud-hidden-top {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+.flight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.flight-arc {
+  fill: none !important;
+  stroke: var(--flight-stroke);
+  stroke-dasharray: 6 5;
+  stroke-width: var(--flight-stroke-width);
+  stroke-linecap: round;
+  opacity: 0.78;
+  vector-effect: non-scaling-stroke;
+  transition:
+    stroke var(--solar-transition),
+    opacity var(--solar-transition);
+}
+
+.flight-plane {
+  fill: var(--flight-plane-fill);
+  stroke: var(--flight-plane-stroke);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 0 2px rgba(165, 132, 82, 0.35));
+  transition:
+    fill var(--solar-transition),
+    stroke var(--solar-transition),
+    filter var(--solar-transition);
+}
+
+.solar-dark-phase .flight-arc {
+  opacity: 0.85;
+}
+
+.solar-dark-phase .flight-plane {
+  filter: drop-shadow(0 0 2px rgba(201, 168, 76, 0.5));
+}
+
+/* Architectural map pins — brass / copper tacks */
+.map-pin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 16px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transform: translate(-50%, -100%);
+  transition: transform 0.25s ease;
+}
+
+.map-pin:hover,
+.map-pin-selected {
+  transform: translate(-50%, -100%) scale(1.12);
+}
+
+.map-pin-head {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.55);
+}
+
+.map-pin-brass .map-pin-head {
+  background: radial-gradient(circle at 32% 28%, #fff8e7 0%, #d4b06a 45%, #9a7340 100%);
+  border: 0.5px solid rgba(255, 255, 255, 0.45);
+}
+
+.map-pin-copper .map-pin-head {
+  background: radial-gradient(circle at 32% 28%, #ffe8df 0%, #c87860 45%, #8f4535 100%);
+  border: 0.5px solid rgba(255, 255, 255, 0.35);
+}
+
+.map-pin-needle {
+  width: 1px;
+  height: 11px;
+  margin-top: -1px;
+  background: linear-gradient(to bottom, #8a8a88 0%, #5a5a58 100%);
+  border-radius: 0 0 1px 1px;
+  z-index: 1;
+}
+
+.map-pin-shadow {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 10px;
+  height: 3px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 50%;
+  filter: blur(1.5px);
+  z-index: 0;
+}
+
+.map-pin-selected .map-pin-head {
+  box-shadow:
+    0 0 0 3px rgba(201, 168, 76, 0.25),
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.55);
+}
+
+/* Ambient Floating Dust Particles */
+.ambient-dust-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.dust-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 240, 200, 0.35);
+  border-radius: 50%;
+  filter: blur(0.5px);
+  animation: floatDust 25s infinite linear;
+}
+
+@keyframes floatDust {
+  0% {
+    transform: translate(0, 100vh) scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(120px, -100px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Custom Deckled Watercolor Paper Card */
+.watercolor-card {
+  background-color: #faf9f6;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(240,235,225,0.4) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(245,242,236,0.5) 0%, transparent 40%);
+  border-radius: 4px;
+  box-shadow: 
+    rgba(0, 0, 0, 0.05) 0px 4px 6px -1px, 
+    rgba(0, 0, 0, 0.08) 0px 10px 30px -10px,
+    inset 0 0 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+/* Plaster wall frame inset — follows solar theme */
+.wall-frame-inset {
+  border: 1px solid var(--frame-border);
+  box-shadow: var(--frame-shadow);
+  transition:
+    border-color var(--solar-transition),
+    box-shadow var(--solar-transition);
+}
+
+/* Right panel — color transitions synced to solar clock */
+.right-panel {
+  background: var(--panel-bg);
+  border-color: var(--panel-border);
+  color: var(--panel-text);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
+  transition:
+    background var(--solar-transition),
+    border-color var(--solar-transition),
+    color var(--solar-transition),
+    box-shadow var(--solar-transition),
+    opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.right-panel-dark {
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.55);
+}
+
+.right-panel-header {
+  border-color: var(--panel-border);
+  transition: border-color var(--solar-transition);
+}
+
+.right-panel-tabs {
+  background: var(--panel-surface);
+  transition: background var(--solar-transition);
+}
+
+.right-panel-tab {
+  color: var(--panel-muted);
+  transition:
+    color var(--solar-transition),
+    background 0.25s ease;
+}
+
+.right-panel-tab:hover:not(.right-panel-tab-active) {
+  color: var(--panel-text);
+}
+
+.right-panel-tab-active {
+  background: #a58452;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(165, 132, 82, 0.3);
+}
+
+.right-panel-close {
+  color: var(--panel-muted);
+  transition:
+    color var(--solar-transition),
+    background 0.2s ease;
+}
+
+.right-panel-close:hover {
+  color: var(--panel-text);
+  background: var(--panel-surface);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   Premium Glassmorphic Control Dock (Vanilla CSS)
+   ========================================================================== */
+
+.control-dock {
+  position: fixed;
+  bottom: clamp(20px, 3vh, 32px);
+  right: clamp(20px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.08);
+  background: var(--dock-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 50;
+  pointer-events: auto;
+  transition:
+    background var(--solar-transition),
+    border-color var(--solar-transition),
+    box-shadow var(--solar-transition),
+    opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.control-dock.tv-hud-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(15px);
+  pointer-events: none;
+}
+
+/* Glass Dock Buttons */
+.dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 8px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--panel-muted);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition:
+    color var(--solar-transition),
+    background 0.25s ease;
+}
+
+.dock-btn-icon-only {
+  padding: 8px;
+}
+
+.dock-btn:hover {
+  background: var(--panel-surface);
+  color: var(--panel-text);
+}
+
+/* Selected Active State */
+.dock-btn.active {
+  background: #a58452;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(165, 132, 82, 0.35);
+}
+
+/* Small Vertical Divider */
+.dock-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.dark-mode .dock-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Micro-animations on Icon inside buttons */
+.dock-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.3s ease;
+  color: #a58452;
+}
+
+.dock-btn.active svg {
+  color: #ffffff !important;
+}
+
+.dock-btn:hover svg {
+  transform: scale(1.15);
+}
+
+/* Rotate Sliders icon on hover */
+.dock-btn-settings:hover svg {
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* ==========================================================================
+   Premium Minimal Range Slider Thumb Override
+   ========================================================================== */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.08);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.solar-dark-phase input[type="range"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #a58452;
+  border: 1.5px solid #faf9f6;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.solar-dark-phase input[type="range"]::-webkit-slider-thumb {
+  border-color: #18191c;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #b59563;
+}
+
+
