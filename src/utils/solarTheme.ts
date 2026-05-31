@@ -1,7 +1,7 @@
 import type { SolarState } from './solarEngine';
 
-export const SOLAR_CLOCK_TRANSITION_MS = 1500;
-export const SOLAR_MANUAL_TRANSITION_MS = 150;
+export const SOLAR_CLOCK_TRANSITION_MS = 450;
+export const SOLAR_MANUAL_TRANSITION_MS = 100;
 
 export interface SolarUiTheme {
   panelBg: string;

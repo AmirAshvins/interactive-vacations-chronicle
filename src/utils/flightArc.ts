@@ -1,9 +1,50 @@
-/** Equirectangular projection matching world-map.svg viewBox */
+/** ViewBox of public/world-map.svg — plate carrée base grid */
+export const MAP_VIEWBOX = {
+  minX: 30.767,
+  minY: 241.591,
+  width: 784.077,
+  height: 458.627,
+} as const;
+
+export const MAP_VIEWBOX_STRING = `${MAP_VIEWBOX.minX} ${MAP_VIEWBOX.minY} ${MAP_VIEWBOX.width} ${MAP_VIEWBOX.height}`;
+
+/**
+ * Calibrated against SVG country geometry (Simple World Map by Al MacDonald).
+ * X uses equirectangular; Y blends naive + fitted slopes because the artwork
+ * compresses mid-latitudes differently from a pure plate carrée grid.
+ */
+const Y_FITTED_SLOPE = -2.85;
+const Y_FITTED_INTERCEPT = 533.804;
+const Y_FITTED_LNG_THRESHOLD = -30;
+
+function naiveY(lat: number): number {
+  return ((90 - lat) / 180) * MAP_VIEWBOX.height + MAP_VIEWBOX.minY;
+}
+
+function fittedY(lat: number): number {
+  return Y_FITTED_SLOPE * lat + Y_FITTED_INTERCEPT;
+}
+
+function useFittedY(lat: number, lng: number): boolean {
+  return lng > Y_FITTED_LNG_THRESHOLD || lat < 0;
+}
+
+/** Project WGS84 lat/lng to SVG user units matching world-map.svg */
 export function projectCoordinates(lat: number, lng: number): { x: number; y: number } {
   return {
-    x: 2.4088 * lng + 401.22,
-    y: -3.2628 * lat + 527.43,
+    x: ((lng + 180) / 360) * MAP_VIEWBOX.width + MAP_VIEWBOX.minX,
+    y: useFittedY(lat, lng) ? fittedY(lat) : naiveY(lat),
   };
+}
+
+/** Inverse of projectCoordinates (approximate for hybrid Y) */
+export function unprojectCoordinates(x: number, y: number): { lat: number; lng: number } {
+  const lng = ((x - MAP_VIEWBOX.minX) / MAP_VIEWBOX.width) * 360 - 180;
+  const lat =
+    lng > Y_FITTED_LNG_THRESHOLD
+      ? (Y_FITTED_INTERCEPT - y) / -Y_FITTED_SLOPE
+      : 90 - ((y - MAP_VIEWBOX.minY) / MAP_VIEWBOX.height) * 180;
+  return { lat, lng };
 }
 
 function toRad(d: number) {

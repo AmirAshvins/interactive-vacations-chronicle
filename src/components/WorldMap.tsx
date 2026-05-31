@@ -1,36 +1,34 @@
-import { useState, useEffect, useRef } from 'react';
-import type { SolarState, CityConfig } from '../utils/solarEngine';
-import { projectCoordinates, getGreatCirclePath } from '../utils/flightArc';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { SolarState } from '../utils/solarEngine';
+import type { Trip, FlightRoute } from '../types/travelogue';
+import {
+  projectCoordinates,
+  unprojectCoordinates,
+  getGreatCirclePath,
+  MAP_VIEWBOX_STRING,
+} from '../utils/flightArc';
+import { computeFlightLaneOffset, resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
+import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
+import { latLngToScreen } from '../utils/tripCardPosition';
 import MapPin from './MapPin';
 
-export interface FlightRoute {
-  id: string;
-  fromCity: string;
-  toCity: string;
-  fromLat: number;
-  fromLng: number;
-  toLat: number;
-  toLng: number;
-}
-
-export interface TravelPin {
-  id: string;
-  cityKey: string;
-  name: string;
-  lat: number;
-  lng: number;
-  description: string;
-  material: 'brass' | 'copper';
-}
+export type { Trip, FlightRoute };
 
 interface WorldMapProps {
   solarState: SolarState;
-  selectedCity: CityConfig;
-  pins: TravelPin[];
+  openTripIds: string[];
+  trips: Trip[];
   flights: FlightRoute[];
-  onPinClick: (pin: TravelPin) => void;
-  showGrid: boolean;
+  homeOrigin: HomeOrigin | null;
+  visitedCountryCodes: string[];
+  showFlightPaths: boolean;
+  highlightVisited: boolean;
+  onPinClick: (trip: Trip) => void;
+  onTripLocationChange?: (tripId: string, lat: number, lng: number) => void;
+  onTripCardAnchorsChange?: (anchors: Record<string, { x: number; y: number }>) => void;
+  onCountriesLoaded?: (codes: string[]) => void;
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
+  isOverlayVisible?: boolean;
   onMapClick?: () => void;
 }
 
@@ -38,10 +36,12 @@ interface ParsedPath {
   id: string;
   d: string;
   className: string;
+  countryId: string;
 }
 
 interface ParsedGroup {
   id: string;
+  countryId: string;
   paths: ParsedPath[];
 }
 
@@ -49,20 +49,25 @@ type ParsedNode =
   | { type: 'path'; data: ParsedPath }
   | { type: 'g'; data: ParsedGroup };
 
-const MAP_VIEWBOX = '30.767 241.591 784.077 458.627';
 const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}world-map.svg`;
 
-/** Top-down plane silhouette — nose points +X for rotate="auto" */
 const PLANE_PATH = 'M 0 0 L 11 -0.8 L 13 0 L 11 0.8 Z M 2.5 -3.2 L 7 -0.8 L 2.5 -0.8 Z M 2.5 0.8 L 7 0.8 L 2.5 3.2 Z';
 
 export default function WorldMap({
   solarState,
-  selectedCity,
-  pins,
+  openTripIds,
+  trips,
   flights,
+  homeOrigin,
+  visitedCountryCodes,
+  showFlightPaths,
+  highlightVisited,
   onPinClick,
-  showGrid,
+  onTripLocationChange,
+  onTripCardAnchorsChange,
+  onCountriesLoaded,
   materialMode,
+  isOverlayVisible = true,
   onMapClick,
 }: WorldMapProps) {
   const [mapNodes, setMapNodes] = useState<ParsedNode[]>([]);
@@ -72,8 +77,29 @@ export default function WorldMap({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [pinDrag, setPinDrag] = useState<{ tripId: string; lat: number; lng: number } | null>(
+    null,
+  );
+  const pinDragPrepRef = useRef<{ tripId: string; startX: number; startY: number; lat: number; lng: number } | null>(
+    null,
+  );
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const pinLayerRef = useRef<SVGSVGElement>(null);
+  const flightLayerRef = useRef<SVGSVGElement>(null);
+  const lastAnchorsRef = useRef<Record<string, { x: number; y: number }>>({});
+  const prevOpenTripIdsRef = useRef<string[]>([]);
+  const openTripIdsRef = useRef(openTripIds);
+  const tripsRef = useRef(trips);
+  const pinDragRef = useRef(pinDrag);
+  const onTripCardAnchorsChangeRef = useRef(onTripCardAnchorsChange);
+  openTripIdsRef.current = openTripIds;
+  tripsRef.current = trips;
+  pinDragRef.current = pinDrag;
+  onTripCardAnchorsChangeRef.current = onTripCardAnchorsChange;
+  const [flightsReady, setFlightsReady] = useState(false);
+  const visitedSet = new Set(visitedCountryCodes.map(normalizeCountryCode));
+  const openTripSet = new Set(openTripIds);
 
   const activeMaterial = materialMode === 'auto' ? solarState.autoMaterial : materialMode;
   const materialClass = `material-${activeMaterial}`;
@@ -91,9 +117,12 @@ export default function WorldMap({
 
         if (outerGroup) {
           const parsed: ParsedNode[] = [];
+          const countryCodes: string[] = [];
+
           Array.from(outerGroup.children).forEach((child, idx) => {
             const tagName = child.tagName.toLowerCase();
             const id = child.getAttribute('id') || `node-${idx}`;
+            countryCodes.push(id);
 
             if (tagName === 'path') {
               parsed.push({
@@ -102,6 +131,7 @@ export default function WorldMap({
                   id,
                   d: child.getAttribute('d') || '',
                   className: child.getAttribute('class') || '',
+                  countryId: id,
                 },
               });
             } else if (tagName === 'g') {
@@ -109,27 +139,164 @@ export default function WorldMap({
                 type: 'g',
                 data: {
                   id,
+                  countryId: id,
                   paths: Array.from(child.getElementsByTagName('path')).map((p, pIdx) => ({
                     id: p.getAttribute('id') || `${id}-path-${pIdx}`,
                     d: p.getAttribute('d') || '',
                     className: p.getAttribute('class') || '',
+                    countryId: id,
                   })),
                 },
               });
             }
           });
+
           setMapNodes(parsed);
+          onCountriesLoaded?.(countryCodes);
         }
       })
       .catch((err) => console.error('[WorldMap] Failed to load map:', err));
+  }, [onCountriesLoaded]);
+
+  const restartFlightAnimations = useCallback(() => {
+    const root = flightLayerRef.current;
+    if (!root) return;
+    root.querySelectorAll('animateMotion').forEach((node) => {
+      try {
+        (node as SVGAnimationElement).beginElement();
+      } catch {
+        /* SMIL unsupported or already running */
+      }
+    });
   }, []);
+
+  // Defer flight layer until map + paths are laid out — SMIL animateMotion fails if mounted too early.
+  useEffect(() => {
+    if (!showFlightPaths || mapNodes.length === 0) {
+      setFlightsReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    let outerFrame = 0;
+    let innerFrame = 0;
+
+    outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        if (!cancelled) setFlightsReady(true);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerFrame);
+      cancelAnimationFrame(innerFrame);
+      setFlightsReady(false);
+    };
+  }, [showFlightPaths, mapNodes.length, flights, trips]);
+
+  useEffect(() => {
+    if (!flightsReady) return;
+    const frame = requestAnimationFrame(() => restartFlightAnimations());
+    return () => cancelAnimationFrame(frame);
+  }, [flightsReady, flights, trips, restartFlightAnimations]);
+
+  const isVisited = (countryId: string) =>
+    highlightVisited && visitedSet.has(normalizeCountryCode(countryId));
 
   const isPathHovered = (pathId: string, groupId?: string) =>
     hoveredCountryId === pathId || hoveredCountryId === groupId;
 
+  const landmassClass = (countryId: string, hovered: boolean) => {
+    const parts = ['landmass'];
+    if (isVisited(countryId)) parts.push('visited-country');
+    if (hovered) parts.push('hovered-country');
+    return parts.join(' ');
+  };
+
+  const clientToLatLng = useCallback((clientX: number, clientY: number) => {
+    const svg = pinLayerRef.current;
+    if (!svg) return null;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return unprojectCoordinates(svgPt.x, svgPt.y);
+  }, []);
+
+  const handlePinPointerDown = useCallback(
+    (e: React.PointerEvent, trip: Trip) => {
+      if (!openTripIds.includes(trip.id) || !onTripLocationChange) return;
+      if ((e.target as HTMLElement).closest('.map-pin')) {
+        e.stopPropagation();
+      }
+      pinDragPrepRef.current = {
+        tripId: trip.id,
+        startX: e.clientX,
+        startY: e.clientY,
+        lat: trip.lat,
+        lng: trip.lng,
+      };
+    },
+    [onTripLocationChange, openTripIds],
+  );
+
+  const handlePinPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const prep = pinDragPrepRef.current;
+      if (!prep && !pinDrag) return;
+
+      if (prep && !pinDrag) {
+        const dx = e.clientX - prep.startX;
+        const dy = e.clientY - prep.startY;
+        if (Math.hypot(dx, dy) < 6) return;
+        setPinDrag({ tripId: prep.tripId, lat: prep.lat, lng: prep.lng });
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      }
+
+      if (!pinDrag && !pinDragPrepRef.current) return;
+      const coords = clientToLatLng(e.clientX, e.clientY);
+      if (!coords) return;
+      const activeId = pinDrag?.tripId ?? prep?.tripId;
+      if (!activeId) return;
+      setPinDrag({ tripId: activeId, lat: coords.lat, lng: coords.lng });
+    },
+    [clientToLatLng, pinDrag],
+  );
+
+  const handlePinPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const wasDragging = !!pinDrag;
+      pinDragPrepRef.current = null;
+
+      if (pinDrag && onTripLocationChange) {
+        const coords = clientToLatLng(e.clientX, e.clientY);
+        if (coords) {
+          const trip = trips.find((t) => t.id === pinDrag.tripId);
+          const moved =
+            !trip ||
+            Math.abs(trip.lat - coords.lat) > 0.001 ||
+            Math.abs(trip.lng - coords.lng) > 0.001;
+          if (moved) {
+            onTripLocationChange(pinDrag.tripId, coords.lat, coords.lng);
+          }
+        }
+      }
+
+      setPinDrag(null);
+      if (wasDragging) {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+      }
+    },
+    [clientToLatLng, onTripLocationChange, pinDrag, trips],
+  );
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('.map-pin')) return;
+    if (pinDrag) return;
     if (zoom <= 1) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -164,6 +331,79 @@ export default function WorldMap({
     setPan({ x: 0, y: 0 });
   };
 
+  const updateTripCardAnchors = useCallback(() => {
+    const onTripCardAnchorsChange = onTripCardAnchorsChangeRef.current;
+    if (!onTripCardAnchorsChange) return;
+    const openTripIds = openTripIdsRef.current;
+    const trips = tripsRef.current;
+    const pinDrag = pinDragRef.current;
+    const pinLayer = pinLayerRef.current;
+    if (!pinLayer || openTripIds.length === 0 || mapNodes.length === 0) {
+      if (lastAnchorsRef.current && Object.keys(lastAnchorsRef.current).length > 0) {
+        lastAnchorsRef.current = {};
+        prevOpenTripIdsRef.current = [];
+        onTripCardAnchorsChange({});
+      }
+      return;
+    }
+
+    const anchors: Record<string, { x: number; y: number }> = {};
+    for (const tripId of openTripIds) {
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) continue;
+      const isDraggingPin = pinDrag?.tripId === tripId;
+      const lat = isDraggingPin ? pinDrag.lat : trip.lat;
+      const lng = isDraggingPin ? pinDrag.lng : trip.lng;
+      const screen = latLngToScreen(lat, lng, pinLayer);
+      if (screen) anchors[tripId] = screen;
+    }
+
+    const last = lastAnchorsRef.current;
+    const ids = Object.keys(anchors);
+    const lastIds = Object.keys(last);
+    const openSetChanged =
+      openTripIds.length !== prevOpenTripIdsRef.current.length ||
+      openTripIds.some((id) => !prevOpenTripIdsRef.current.includes(id));
+
+    let changed =
+      openSetChanged ||
+      ids.length !== lastIds.length ||
+      ids.some((id) => !last[id]) ||
+      lastIds.some((id) => !anchors[id]);
+
+    if (!changed) {
+      for (const id of ids) {
+        const a = anchors[id];
+        const b = last[id];
+        if (!b || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5) {
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (changed) {
+      prevOpenTripIdsRef.current = openTripIds;
+      lastAnchorsRef.current = anchors;
+      onTripCardAnchorsChange(anchors);
+    }
+  }, [mapNodes.length]);
+
+  useEffect(() => {
+    if (openTripIds.length === 0) {
+      updateTripCardAnchors();
+      return;
+    }
+
+    let frame = 0;
+    const tick = () => {
+      updateTripCardAnchors();
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [openTripIds.length, updateTripCardAnchors]);
+
   const hoveredName = hoveredCountryId ? getCountryName(hoveredCountryId) : null;
 
   return (
@@ -171,6 +411,7 @@ export default function WorldMap({
       ref={mapContainerRef}
       className="map-stage select-none"
       data-phase={solarState.phase}
+      data-material={activeMaterial}
       style={{ cursor: isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'default' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -180,20 +421,19 @@ export default function WorldMap({
       onClick={() => onMapClick?.()}
     >
       <div className="spotlight-overlay" />
-      {showGrid && <div className="blueprint-grid" />}
 
       <div
         className="map-transform-layer"
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transition: isDragging ? 'none' : 'transform 0.35s ease-out',
+          transition: isDragging ? 'none' : 'transform 0.2s ease-out',
         }}
       >
         <div className="map-aspect-box">
           {mapNodes.length > 0 ? (
             <>
               <svg
-                viewBox={MAP_VIEWBOX}
+                viewBox={MAP_VIEWBOX_STRING}
                 id="world-map"
                 className={`world-map-svg ${materialClass}`}
                 preserveAspectRatio="xMidYMid meet"
@@ -201,17 +441,19 @@ export default function WorldMap({
                 <g>
                   {mapNodes.map((node) => {
                     if (node.type === 'path') {
+                      const hovered = isPathHovered(node.data.id);
                       return (
                         <path
                           key={node.data.id}
                           id={node.data.id}
                           d={node.data.d}
-                          className={`landmass ${node.data.className} ${isPathHovered(node.data.id) ? 'hovered-country' : ''}`}
+                          className={landmassClass(node.data.countryId, hovered)}
                           onMouseEnter={() => setHoveredCountryId(node.data.id)}
                           onMouseLeave={() => setHoveredCountryId(null)}
                         />
                       );
                     }
+                    const hovered = isPathHovered(node.data.id);
                     return (
                       <g
                         key={node.data.id}
@@ -224,7 +466,7 @@ export default function WorldMap({
                             key={p.id}
                             id={p.id}
                             d={p.d}
-                            className={`landmass ${p.className} ${isPathHovered(p.id, node.data.id) ? 'hovered-country' : ''}`}
+                            className={landmassClass(node.data.countryId, hovered)}
                           />
                         ))}
                       </g>
@@ -233,77 +475,89 @@ export default function WorldMap({
                 </g>
               </svg>
 
-              {/* Flight routes on separate layer — prevents fill bleed onto arcs */}
+              {showFlightPaths && flightsReady && (
+                <svg
+                  ref={flightLayerRef}
+                  className="flight-layer"
+                  viewBox={MAP_VIEWBOX_STRING}
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  {flights.map((flight, idx) => {
+                    const endpoints = resolveFlightEndpoints(flight, trips, homeOrigin);
+                    if (!endpoints) return null;
+
+                    const { fromLat, fromLng, toLat, toLng } = endpoints;
+                    const laneOffset = computeFlightLaneOffset(flight, flights, idx);
+                    const pathD = getGreatCirclePath(fromLat, fromLng, toLat, toLng, laneOffset);
+                    const arcId = `arc-${flight.id}`;
+                    const start = projectCoordinates(fromLat, fromLng);
+                    const end = projectCoordinates(toLat, toLng);
+                    const duration = Math.max(
+                      6,
+                      Math.min(
+                        16,
+                        Math.floor(Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2) / 30),
+                      ),
+                    );
+
+                    return (
+                      <g key={flight.id}>
+                        <path id={arcId} d={pathD} className="flight-arc" pathLength={100} />
+                        <g className="flight-plane-group">
+                          <animateMotion
+                            dur={`${duration}s`}
+                            repeatCount="indefinite"
+                            rotate="auto"
+                            calcMode="linear"
+                            begin="0s"
+                          >
+                            <mpath href={`#${arcId}`} xlinkHref={`#${arcId}`} />
+                          </animateMotion>
+                          <path d={PLANE_PATH} className="flight-plane" transform="translate(-1, 0)" />
+                        </g>
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+
               <svg
-                className="flight-layer"
-                viewBox={MAP_VIEWBOX}
+                ref={pinLayerRef}
+                className="pin-layer"
+                viewBox={MAP_VIEWBOX_STRING}
                 preserveAspectRatio="xMidYMid meet"
               >
-                {flights.map((flight, idx) => {
-                  const duplicateIndex = flights.slice(0, idx).filter(
-                    (f) =>
-                      (f.fromCity === flight.fromCity && f.toCity === flight.toCity) ||
-                      (f.fromCity === flight.toCity && f.toCity === flight.fromCity),
-                  ).length;
-                  const laneOffset = duplicateIndex * 6;
-                  const pathD = getGreatCirclePath(
-                    flight.fromLat,
-                    flight.fromLng,
-                    flight.toLat,
-                    flight.toLng,
-                    laneOffset,
-                  );
-                  const arcId = `arc-${flight.id}`;
-                  const start = projectCoordinates(flight.fromLat, flight.fromLng);
-                  const end = projectCoordinates(flight.toLat, flight.toLng);
-                  const duration = Math.max(
-                    6,
-                    Math.min(16, Math.floor(Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2) / 30)),
-                  );
+                {trips.map((trip) => {
+                  const isDraggingPin = pinDrag?.tripId === trip.id;
+                  const lat = isDraggingPin ? pinDrag.lat : trip.lat;
+                  const lng = isDraggingPin ? pinDrag.lng : trip.lng;
+                  const { x, y } = projectCoordinates(lat, lng);
+                  const isOpen = openTripSet.has(trip.id);
+                  const isDraggable = isOpen && !!onTripLocationChange;
 
                   return (
-                    <g key={flight.id}>
-                      <path id={arcId} d={pathD} className="flight-arc" />
-                      <g className="flight-plane-group">
-                        <animateMotion
-                          dur={`${duration}s`}
-                          repeatCount="indefinite"
-                          rotate="auto"
-                          calcMode="linear"
-                        >
-                          <mpath href={`#${arcId}`} />
-                        </animateMotion>
-                        <path d={PLANE_PATH} className="flight-plane" transform="translate(-1, 0)" />
-                      </g>
+                    <g
+                      key={trip.id}
+                      transform={`translate(${x}, ${y})`}
+                      className={`map-pin-anchor ${isDraggable ? 'map-pin-draggable' : ''} ${isDraggingPin ? 'map-pin-dragging' : ''}`}
+                      onPointerDown={(e) => handlePinPointerDown(e, trip)}
+                      onPointerMove={handlePinPointerMove}
+                      onPointerUp={handlePinPointerUp}
+                      onPointerCancel={handlePinPointerUp}
+                    >
+                      <foreignObject x={-7} y={-7} width={14} height={14} overflow="visible">
+                        <MapPin
+                          pin={trip}
+                          selected={isOpen}
+                          embedded
+                          draggable={isDraggable}
+                          onClick={() => onPinClick(trip)}
+                        />
+                      </foreignObject>
                     </g>
                   );
                 })}
               </svg>
-
-              {pins.map((pin) => {
-                const coords = projectCoordinates(pin.lat, pin.lng);
-                const isSelected = selectedCity.name.toLowerCase() === pin.cityKey.toLowerCase();
-                const leftPercent = ((coords.x - 30.767) / 784.077) * 100;
-                const topPercent = ((coords.y - 241.591) / 458.627) * 100;
-
-                return (
-                  <div
-                    key={pin.id}
-                    className="absolute pointer-events-auto"
-                    style={{
-                      left: `${leftPercent}%`,
-                      top: `${topPercent}%`,
-                      zIndex: 25,
-                    }}
-                  >
-                    <MapPin
-                      pin={pin}
-                      selected={isSelected}
-                      onClick={() => onPinClick(pin)}
-                    />
-                  </div>
-                );
-              })}
             </>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-light tracking-widest uppercase opacity-40">
@@ -317,7 +571,9 @@ export default function WorldMap({
         <button
           type="button"
           onClick={resetZoom}
-          className="absolute bottom-4 left-4 z-30 rounded-full border border-black/5 bg-white/80 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-black/60 shadow-lg backdrop-blur-sm transition-all hover:bg-white tv-hud-element"
+          className={`absolute bottom-4 left-4 z-30 rounded-full border border-black/5 bg-white/80 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-black/60 shadow-lg backdrop-blur-sm transition-all hover:bg-white tv-hud-element ${
+            isOverlayVisible ? '' : 'tv-hud-hidden'
+          }`}
         >
           Reset view
         </button>
@@ -325,7 +581,7 @@ export default function WorldMap({
 
       <div
         className={`pointer-events-none fixed z-50 rounded-md border border-black/5 bg-white/90 px-3 py-1.5 text-[10px] font-light uppercase tracking-widest text-black/70 shadow-lg backdrop-blur-md transition-opacity duration-200 ${
-          hoveredName ? 'opacity-100' : 'opacity-0'
+          hoveredName && isOverlayVisible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ left: tooltipPos.x, top: tooltipPos.y, fontFamily: 'var(--font-sans)' }}
       >
@@ -333,46 +589,4 @@ export default function WorldMap({
       </div>
     </div>
   );
-}
-
-function getCountryName(id: string): string {
-  const map: Record<string, string> = {
-    ca: 'Canada',
-    us: 'United States',
-    ir: 'Iran',
-    gb: 'United Kingdom',
-    fr: 'France',
-    de: 'Germany',
-    jp: 'Japan',
-    au: 'Australia',
-    br: 'Brazil',
-    it: 'Italy',
-    es: 'Spain',
-    ru: 'Russia',
-    cn: 'China',
-    in: 'India',
-    za: 'South Africa',
-    mx: 'Mexico',
-    sa: 'Saudi Arabia',
-    ae: 'United Arab Emirates',
-    eg: 'Egypt',
-    tr: 'Turkey',
-    ar: 'Argentina',
-    kp: 'North Korea',
-    kr: 'South Korea',
-    gl: 'Greenland',
-    is: 'Iceland',
-    nz: 'New Zealand',
-    ch: 'Switzerland',
-    nl: 'Netherlands',
-    se: 'Sweden',
-    no: 'Norway',
-    fi: 'Finland',
-  };
-
-  if (id.startsWith('_')) {
-    return id.substring(1).replace(/_/g, ' ');
-  }
-
-  return map[id.toLowerCase()] || id.toUpperCase();
 }

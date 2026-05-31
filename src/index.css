@@ -10,9 +10,10 @@
   --spotlight-opacity: 0.0;
   --glow-color: rgba(255, 255, 255, 0.3);
   --text-color: rgba(28, 28, 30, 0.6);
-  --grid-opacity: 0.03;
   --accent-brass: #d4af37;
-  --solar-transition: 1500ms ease-in-out;
+  --solar-transition: 450ms ease-in-out;
+  --hud-transition: 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ui-transition: 0.15s ease;
 
   /* UI theme — synced with solar clock */
   --panel-bg: rgba(255, 255, 255, 0.94);
@@ -22,8 +23,6 @@
   --panel-surface: rgba(60, 48, 32, 0.04);
   --dock-bg: rgba(255, 255, 255, 0.92);
   --dock-border: rgba(60, 48, 32, 0.1);
-  --frame-border: rgba(92, 72, 48, 0.12);
-  --frame-shadow: inset 0 0 48px rgba(92, 72, 48, 0.03);
   --flight-stroke: #a58452;
   --flight-stroke-width: 1.15;
   --flight-plane-fill: #b8956a;
@@ -41,17 +40,24 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Plaster Wall Surface Texture Overlay */
+/* Wall — white in daylight; solar-driven at night/twilight */
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: var(--wall-bg);
   font-family: var(--font-sans);
   color: var(--text-color);
   width: 100vw;
   height: 100vh;
-  transition: background var(--solar-transition);
+  transition: background-color var(--solar-transition);
+}
+
+html:not(.solar-dark-phase) body {
+  background-color: #ffffff;
+}
+
+html.solar-dark-phase body {
+  background-color: var(--wall-bg);
 }
 
 #root {
@@ -89,7 +95,8 @@ body {
 }
 
 .map-aspect-box .world-map-svg,
-.map-aspect-box .flight-layer {
+.map-aspect-box .flight-layer,
+.map-aspect-box .pin-layer {
   width: 100%;
   height: 100%;
   display: block;
@@ -106,24 +113,6 @@ body {
   pointer-events: none;
   z-index: 2;
   opacity: var(--spotlight-opacity);
-  transition: opacity var(--solar-transition);
-}
-
-/* Architect Coordinate Gridlines Overlay */
-.blueprint-grid {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background-image: 
-    linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  background-position: center;
-  z-index: 2;
-  opacity: var(--grid-opacity);
   transition: opacity var(--solar-transition);
 }
 
@@ -144,10 +133,9 @@ body {
   stroke: rgba(92, 68, 38, 0.35);
 }
 
-/* Wood Textures via CSS Gradients */
+/* Wood landmass tints — no SVG background / frame */
 .material-oak {
   color: #d2c1a5;
-  background-image: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.05) 100%);
   transition: color var(--solar-transition);
 }
 .material-cork {
@@ -159,16 +147,27 @@ body {
   transition: color var(--solar-transition);
 }
 
-/* Walnut keeps a subtle outer edge on the SVG shell */
-.material-walnut.world-map-svg {
-  outline: 0.5px solid rgba(212, 175, 55, 0.12);
-  outline-offset: -0.5px;
+#world-map path.landmass.visited-country {
+  fill: #a58452 !important;
+  stroke: rgba(165, 132, 82, 0.45);
+  opacity: 0.92;
 }
 
-/* Double-layered SVG dynamic filter shadow mapping */
+.solar-dark-phase #world-map path.landmass.visited-country {
+  fill: #c9a04a !important;
+  stroke: rgba(212, 175, 55, 0.35);
+}
+
+.map-stage[data-material='walnut'] .world-map-svg {
+  outline: none;
+}
+
+/* Map sits flush on the board — landmass shadow only, no card frame */
 .world-map-svg {
-  filter: drop-shadow(var(--shadow-dx) var(--shadow-dy) var(--shadow-blur) rgba(0, 0, 0, calc(var(--shadow-opacity) * 1.5)))
-          drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(
+    var(--shadow-dx) var(--shadow-dy) var(--shadow-blur)
+    rgba(0, 0, 0, calc(var(--shadow-opacity) * 1.5))
+  );
   transition:
     filter var(--solar-transition),
     color var(--solar-transition);
@@ -183,9 +182,10 @@ body {
 .tv-hud-element {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition:
+    opacity var(--hud-transition),
+    visibility var(--hud-transition),
+    transform var(--hud-transition);
 }
 
 .tv-hud-hidden {
@@ -223,6 +223,42 @@ body {
   overflow: visible;
 }
 
+.pin-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  z-index: 25;
+  pointer-events: none;
+}
+
+.map-pin-anchor {
+  pointer-events: auto;
+}
+
+.map-pin-draggable {
+  cursor: grab;
+}
+
+.map-pin-draggable:active,
+.map-pin-dragging {
+  cursor: grabbing;
+}
+
+.map-pin-grabbable {
+  cursor: grab;
+}
+
+.map-pin-dragging .map-pin-dot {
+  box-shadow:
+    0 0 0 4px rgba(220, 38, 38, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.trip-detail-card-header {
+  touch-action: none;
+  user-select: none;
+}
+
 .flight-arc {
   fill: none !important;
   stroke: var(--flight-stroke);
@@ -255,75 +291,83 @@ body {
   filter: drop-shadow(0 0 2px rgba(201, 168, 76, 0.5));
 }
 
-/* Architectural map pins — brass / copper tacks */
+/* Minimal map pins — crisp red markers on the cork map */
 .map-pin {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  width: 16px;
-  height: 24px;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  transform: translate(-50%, -100%);
-  transition: transform 0.25s ease;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+}
+
+.map-pin-embedded {
+  transform: none;
+  transition: transform 0.15s ease;
 }
 
 .map-pin:hover,
 .map-pin-selected {
-  transform: translate(-50%, -100%) scale(1.12);
+  transform: translate(-50%, -50%) scale(1.18);
 }
 
-.map-pin-head {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  position: relative;
-  z-index: 2;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.55);
+.map-pin-embedded:hover,
+.map-pin-embedded.map-pin-selected {
+  transform: scale(1.18);
 }
 
-.map-pin-brass .map-pin-head {
-  background: radial-gradient(circle at 32% 28%, #fff8e7 0%, #d4b06a 45%, #9a7340 100%);
-  border: 0.5px solid rgba(255, 255, 255, 0.45);
-}
-
-.map-pin-copper .map-pin-head {
-  background: radial-gradient(circle at 32% 28%, #ffe8df 0%, #c87860 45%, #8f4535 100%);
-  border: 0.5px solid rgba(255, 255, 255, 0.35);
-}
-
-.map-pin-needle {
-  width: 1px;
+.map-pin-dot {
+  display: block;
+  width: 11px;
   height: 11px;
-  margin-top: -1px;
-  background: linear-gradient(to bottom, #8a8a88 0%, #5a5a58 100%);
-  border-radius: 0 0 1px 1px;
-  z-index: 1;
-}
-
-.map-pin-shadow {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  width: 10px;
-  height: 3px;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.18);
   border-radius: 50%;
-  filter: blur(1.5px);
-  z-index: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
-.map-pin-selected .map-pin-head {
+.map-pin-red .map-pin-dot {
+  background: #dc2626;
+}
+
+.map-pin-deep .map-pin-dot {
+  background: #991b1b;
+}
+
+.map-pin-selected .map-pin-dot {
   box-shadow:
-    0 0 0 3px rgba(201, 168, 76, 0.25),
-    0 1px 3px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.55);
+    0 0 0 3px rgba(220, 38, 38, 0.28),
+    0 1px 5px rgba(0, 0, 0, 0.4);
+}
+
+.solar-dark-phase .map-pin-dot {
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.solar-dark-phase .map-pin-red .map-pin-dot {
+  background: #ef4444;
+}
+
+.solar-dark-phase .map-pin-deep .map-pin-dot {
+  background: #dc2626;
+}
+
+.solar-dark-phase .map-pin-selected .map-pin-dot {
+  box-shadow:
+    0 0 0 3px rgba(248, 113, 113, 0.35),
+    0 0 10px rgba(239, 68, 68, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.55);
 }
 
 /* Ambient Floating Dust Particles */
@@ -380,14 +424,6 @@ body {
   position: relative;
 }
 
-/* Plaster wall frame inset — follows solar theme */
-.wall-frame-inset {
-  border: 1px solid var(--frame-border);
-  box-shadow: var(--frame-shadow);
-  transition:
-    border-color var(--solar-transition),
-    box-shadow var(--solar-transition);
-}
 
 /* Right panel — color transitions synced to solar clock */
 .right-panel {
@@ -400,9 +436,9 @@ body {
     border-color var(--solar-transition),
     color var(--solar-transition),
     box-shadow var(--solar-transition),
-    opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    opacity var(--hud-transition),
+    visibility var(--hud-transition),
+    transform var(--hud-transition);
 }
 
 .right-panel-dark {
@@ -423,7 +459,7 @@ body {
   color: var(--panel-muted);
   transition:
     color var(--solar-transition),
-    background 0.25s ease;
+    background var(--ui-transition);
 }
 
 .right-panel-tab:hover:not(.right-panel-tab-active) {
@@ -440,7 +476,7 @@ body {
   color: var(--panel-muted);
   transition:
     color var(--solar-transition),
-    background 0.2s ease;
+    background var(--ui-transition);
 }
 
 .right-panel-close:hover {
@@ -474,6 +510,19 @@ body {
    Premium Glassmorphic Control Dock (Vanilla CSS)
    ========================================================================== */
 
+.trip-detail-light {
+  background-color: #faf9f6;
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #2c2c2a;
+}
+
+.trip-detail-dark {
+  background: rgba(18, 18, 20, 0.92);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #e8e8ea;
+  backdrop-filter: blur(20px);
+}
+
 .control-dock {
   position: fixed;
   bottom: clamp(20px, 3vh, 32px);
@@ -494,9 +543,9 @@ body {
     background var(--solar-transition),
     border-color var(--solar-transition),
     box-shadow var(--solar-transition),
-    opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    visibility 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    opacity var(--hud-transition),
+    visibility var(--hud-transition),
+    transform var(--hud-transition);
 }
 
 .control-dock.tv-hud-hidden {
@@ -527,7 +576,7 @@ body {
   cursor: pointer;
   transition:
     color var(--solar-transition),
-    background 0.25s ease;
+    background var(--ui-transition);
 }
 
 .dock-btn-icon-only {
@@ -562,7 +611,7 @@ body {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), color var(--ui-transition);
   color: #a58452;
 }
 
@@ -591,7 +640,7 @@ input[type="range"] {
   border-radius: 9999px;
   background: rgba(0, 0, 0, 0.08);
   outline: none;
-  transition: all 0.3s ease;
+  transition: background var(--ui-transition);
 }
 
 .solar-dark-phase input[type="range"] {

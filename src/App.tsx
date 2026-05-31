@@ -1,61 +1,56 @@
-import { useState, useEffect, useRef } from 'react';
-import { CITIES, getSolarState, fetchSolarTimes, calculateSolarTimesMath, getDecimalHoursInTimezone } from './utils/solarEngine';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  CITIES,
+  getSolarState,
+  fetchSolarTimes,
+  calculateSolarTimesMath,
+  getDecimalHoursInTimezone,
+} from './utils/solarEngine';
 import type { CityConfig, SolarTimes } from './utils/solarEngine';
+import type { Trip } from './types/travelogue';
 import WorldMap from './components/WorldMap';
-import type { TravelPin, FlightRoute } from './components/WorldMap';
 import RightPanel, { type PanelTab } from './components/RightPanel';
+import TripDetailCard, { type TripCardLayout } from './components/TripDetailCard';
+import { pinAnchoredCardPosition } from './utils/tripCardPosition';
+import { deriveJournalFlights, getHomeOrigin } from './utils/flightRoutes';
 import { useTravelogueStore } from './hooks/useTravelogueStore';
+import { useAppSettings } from './hooks/useAppSettings';
 import { getSolarUiTheme, SOLAR_CLOCK_TRANSITION_MS, SOLAR_MANUAL_TRANSITION_MS } from './utils/solarTheme';
-import { Clock, Navigation, Sliders } from 'lucide-react';
+import { Sliders } from 'lucide-react';
 
-const INITIAL_PINS: TravelPin[] = [
+const INITIAL_TRIPS: Trip[] = [
   {
     id: 'pin-van',
+    countryCode: 'ca',
     cityKey: 'vancouver',
     name: 'Vancouver',
     lat: 49.2827,
     lng: -123.1207,
     description: 'A coastal mountain haven where modern architecture meets majestic wilderness.',
     material: 'brass',
+    images: [],
   },
   {
     id: 'pin-tor',
+    countryCode: 'ca',
     cityKey: 'toronto',
     name: 'Toronto',
     lat: 43.6532,
     lng: -79.3832,
     description: 'The central anchor city of the Bedrood Azizi Family. Concrete lines and lakefront brick.',
     material: 'copper',
+    images: [],
   },
   {
     id: 'pin-teh',
+    countryCode: 'ir',
     cityKey: 'tehran',
     name: 'Tehran',
     lat: 35.6892,
-    lng: 51.3890,
+    lng: 51.389,
     description: 'An ancient mountain-framed valley, rich with Persian geometry and modernist architecture.',
     material: 'brass',
-  },
-];
-
-const INITIAL_FLIGHTS: FlightRoute[] = [
-  {
-    id: 'f-tor-teh',
-    fromCity: 'toronto',
-    toCity: 'tehran',
-    fromLat: 43.6532,
-    fromLng: -79.3832,
-    toLat: 35.6892,
-    toLng: 51.3890,
-  },
-  {
-    id: 'f-van-tor',
-    fromCity: 'vancouver',
-    toCity: 'toronto',
-    fromLat: 49.2827,
-    fromLng: -123.1207,
-    toLat: 43.6532,
-    toLng: -79.3832,
+    images: [],
   },
 ];
 
@@ -63,6 +58,7 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState<CityConfig>(CITIES.toronto);
   const [currentTime, setCurrentTime] = useState<number>(12.0);
   const [isTimeOverridden, setIsTimeOverridden] = useState<boolean>(false);
+  const [countryCodes, setCountryCodes] = useState<string[]>([]);
 
   const [solarTimes, setSolarTimes] = useState<SolarTimes>({
     sunrise: 6.0,
@@ -71,24 +67,94 @@ export default function App() {
     dayLength: 14.5,
   });
 
-  const [materialMode, setMaterialMode] = useState<'oak' | 'cork' | 'walnut' | 'auto'>('auto');
-  const [showGrid, setShowGrid] = useState<boolean>(false);
   const [panelTab, setPanelTab] = useState<PanelTab | null>(null);
 
-  const [isTvMode, setIsTvMode] = useState<boolean>(true);
   const [isOverlayVisible, setIsOverlayVisible] = useState<boolean>(true);
 
-  const [selectedPin, setSelectedPin] = useState<TravelPin | null>(null);
+  const [openTripCards, setOpenTripCards] = useState<Record<string, TripCardLayout>>({});
+  const [tripCardAnchors, setTripCardAnchors] = useState<Record<string, { x: number; y: number }>>(
+    {},
+  );
+  const zCounterRef = useRef(40);
+
+  const {
+    materialMode,
+    isTvMode,
+    mapSettings,
+    homeCityKey,
+    setMaterialMode,
+    setIsTvMode,
+    setHomeCityKey,
+    setMapSettings,
+  } = useAppSettings();
 
   const travelogue = useTravelogueStore({
-    pins: INITIAL_PINS,
-    flights: INITIAL_FLIGHTS,
-    memories: [],
+    trips: INITIAL_TRIPS,
   });
 
-  const { pins, flights, memories, addFlight, removeFlight, addMemory } = travelogue;
+  const {
+    ready: travelogueReady,
+    trips,
+    addTrip,
+    updateTrip,
+    removeTrip,
+    importTrips,
+    visitedCountryCodes,
+  } = travelogue;
+
+  const homeOrigin = useMemo(() => getHomeOrigin(homeCityKey), [homeCityKey]);
+  const flights = useMemo(
+    () => deriveJournalFlights(homeCityKey, trips),
+    [homeCityKey, trips],
+  );
 
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTvModeRef = useRef(isTvMode);
+  isTvModeRef.current = isTvMode;
+
+  const scheduleOverlayHide = useCallback(() => {
+    if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    idleTimeoutRef.current = null;
+
+    if (isTvModeRef.current) {
+      idleTimeoutRef.current = setTimeout(() => setIsOverlayVisible(false), 8000);
+    }
+  }, []);
+
+  const resetIdleTimer = useCallback(() => {
+    setIsOverlayVisible(true);
+    scheduleOverlayHide();
+  }, [scheduleOverlayHide]);
+
+  useEffect(() => {
+    if (!isTvMode) {
+      setIsOverlayVisible(true);
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+      return;
+    }
+
+    const wakeEvents = ['mousedown', 'keydown', 'wheel', 'touchstart'] as const;
+
+    const handleWake = () => resetIdleTimer();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPanelTab(null);
+        setOpenTripCards({});
+      }
+      resetIdleTimer();
+    };
+
+    wakeEvents.forEach((event) => window.addEventListener(event, handleWake, { passive: true }));
+    window.addEventListener('keydown', handleKey);
+
+    resetIdleTimer();
+
+    return () => {
+      wakeEvents.forEach((event) => window.removeEventListener(event, handleWake));
+      window.removeEventListener('keydown', handleKey);
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    };
+  }, [isTvMode, resetIdleTimer, scheduleOverlayHide]);
 
   useEffect(() => {
     let active = true;
@@ -138,7 +204,6 @@ export default function App() {
     root.style.setProperty('--spotlight-opacity', `${solarState.spotlightOpacity}`);
     root.style.setProperty('--glow-color', solarState.glowColor);
     root.style.setProperty('--text-color', solarState.textColor);
-    root.style.setProperty('--grid-opacity', `${solarState.gridOpacity}`);
 
     root.style.setProperty('--panel-bg', uiTheme.panelBg);
     root.style.setProperty('--panel-border', uiTheme.panelBorder);
@@ -147,8 +212,6 @@ export default function App() {
     root.style.setProperty('--panel-surface', uiTheme.panelSurface);
     root.style.setProperty('--dock-bg', uiTheme.dockBg);
     root.style.setProperty('--dock-border', uiTheme.dockBorder);
-    root.style.setProperty('--frame-border', uiTheme.frameBorder);
-    root.style.setProperty('--frame-shadow', uiTheme.frameShadow);
     root.style.setProperty('--flight-stroke', uiTheme.flightStroke);
     root.style.setProperty('--flight-stroke-width', uiTheme.flightStrokeWidth);
     root.style.setProperty('--flight-plane-fill', uiTheme.flightPlaneFill);
@@ -158,73 +221,88 @@ export default function App() {
 
     root.classList.toggle('solar-manual-mode', isTimeOverridden);
     root.classList.toggle('solar-clock-mode', !isTimeOverridden);
-    root.classList.toggle('solar-dark-phase', solarState.phase === 'night' || solarState.phase === 'twilight');
-  }, [solarState, uiTheme, isTimeOverridden]);
+    root.classList.toggle('solar-dark-phase', isDarkPhase);
+  }, [solarState, uiTheme, isTimeOverridden, isDarkPhase]);
 
-  const idleStateRef = useRef({ isTvMode, panelTab, isTimeOverridden, selectedPin });
+  const handleCountriesLoaded = useCallback((codes: string[]) => {
+    setCountryCodes(codes);
+  }, []);
 
-  idleStateRef.current = { isTvMode, panelTab, isTimeOverridden, selectedPin };
+  const handleTripCardAnchorsChange = useCallback(
+    (anchors: Record<string, { x: number; y: number }>) => {
+      setTripCardAnchors((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(anchors);
+        if (
+          prevKeys.length === nextKeys.length &&
+          nextKeys.every(
+            (id) =>
+              prev[id] &&
+              Math.abs(prev[id].x - anchors[id].x) <= 0.5 &&
+              Math.abs(prev[id].y - anchors[id].y) <= 0.5,
+          )
+        ) {
+          return prev;
+        }
+        return anchors;
+      });
+    },
+    [],
+  );
 
-  const scheduleOverlayHide = () => {
-    if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-    idleTimeoutRef.current = null;
-
-    const { isTvMode: tv, panelTab: tab, isTimeOverridden: overridden, selectedPin: pin } =
-      idleStateRef.current;
-
-    if (tv && !tab && !overridden && !pin) {
-      idleTimeoutRef.current = setTimeout(() => setIsOverlayVisible(false), 8000);
-    }
-  };
-
-  const resetIdleTimer = () => {
-    setIsOverlayVisible(true);
-    scheduleOverlayHide();
-  };
-
-  useEffect(() => {
-    const wakeEvents = ['mousedown', 'keydown', 'wheel', 'touchstart'] as const;
-
-    const handleWake = () => resetIdleTimer();
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setPanelTab(null);
-        setSelectedPin(null);
+  const openTripPanel = (trip: Trip) => {
+    setOpenTripCards((prev) => {
+      const nextZ = ++zCounterRef.current;
+      if (prev[trip.id]) {
+        return { ...prev, [trip.id]: { ...prev[trip.id], z: nextZ } };
       }
-      resetIdleTimer();
-    };
-
-    wakeEvents.forEach((event) => window.addEventListener(event, handleWake, { passive: true }));
-    window.addEventListener('keydown', handleKey);
-
+      const cascade = Object.keys(prev).length;
+      return {
+        ...prev,
+        [trip.id]: { z: nextZ, offsetX: cascade * 12, offsetY: cascade * 12 },
+      };
+    });
     resetIdleTimer();
+  };
 
-    return () => {
-      wakeEvents.forEach((event) => window.removeEventListener(event, handleWake));
-      window.removeEventListener('keydown', handleKey);
-      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-    };
-  }, [isTvMode, panelTab, isTimeOverridden, selectedPin]);
+  const closeTripPanel = (tripId: string) => {
+    setOpenTripCards((prev) => {
+      const next = { ...prev };
+      delete next[tripId];
+      return next;
+    });
+    resetIdleTimer();
+  };
+
+  const focusTripPanel = (tripId: string) => {
+    setOpenTripCards((prev) => {
+      if (!prev[tripId]) return prev;
+      return { ...prev, [tripId]: { ...prev[tripId], z: ++zCounterRef.current } };
+    });
+  };
+
+  const moveTripPanelOffset = (tripId: string, offsetX: number, offsetY: number) => {
+    setOpenTripCards((prev) => {
+      if (!prev[tripId]) return prev;
+      return { ...prev, [tripId]: { ...prev[tripId], offsetX, offsetY } };
+    });
+  };
+
+  const handleTripLocationChange = (tripId: string, lat: number, lng: number) => {
+    const trip = trips.find((t) => t.id === tripId);
+    if (!trip) return;
+    updateTrip({
+      ...trip,
+      lat: Math.round(lat * 10000) / 10000,
+      lng: Math.round(lng * 10000) / 10000,
+      cityKey: undefined,
+    });
+    resetIdleTimer();
+  };
 
   const openPanel = (tab: PanelTab = 'settings') => {
     setPanelTab((current) => (current === tab ? null : tab));
     resetIdleTimer();
-  };
-
-  const handleAddFlightRoute = (fromCity: string, toCity: string) => {
-    const fromPin = pins.find((p) => p.cityKey === fromCity);
-    const toPin = pins.find((p) => p.cityKey === toCity);
-    if (!fromPin || !toPin) return;
-
-    addFlight({
-      id: `f-${Date.now()}`,
-      fromCity,
-      toCity,
-      fromLat: fromPin.lat,
-      fromLng: fromPin.lng,
-      toLat: toPin.lat,
-      toLng: toPin.lng,
-    });
   };
 
   const [dustParticles] = useState(() =>
@@ -237,28 +315,30 @@ export default function App() {
     })),
   );
 
-  const pinSubtitle: Record<string, string> = {
-    vancouver: 'The Mountain Haven',
-    toronto: 'The Family Anchor',
-    tehran: 'The Heritage Cradle',
-  };
+  const openTripIds = Object.keys(openTripCards);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-
+      {!travelogueReady && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#f5f0e8]/80 backdrop-blur-sm">
+          <p className="text-xs font-light uppercase tracking-[0.3em] opacity-50">Loading chronicle…</p>
+        </div>
+      )}
       <WorldMap
         solarState={solarState}
-        selectedCity={selectedCity}
-        pins={pins}
+        openTripIds={openTripIds}
+        trips={trips}
         flights={flights}
-        onPinClick={(pin) => {
-          setSelectedPin(pin);
-          const config = CITIES[pin.cityKey];
-          if (config) setSelectedCity(config);
-          resetIdleTimer();
-        }}
-        showGrid={showGrid}
+        homeOrigin={homeOrigin}
+        visitedCountryCodes={visitedCountryCodes()}
+        showFlightPaths={mapSettings.showFlightPaths}
+        highlightVisited={mapSettings.highlightVisited}
+        onPinClick={openTripPanel}
+        onTripLocationChange={handleTripLocationChange}
+        onTripCardAnchorsChange={handleTripCardAnchorsChange}
+        onCountriesLoaded={handleCountriesLoaded}
         materialMode={materialMode}
+        isOverlayVisible={isOverlayVisible}
         onMapClick={resetIdleTimer}
       />
 
@@ -279,10 +359,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Control dock */}
-      <div
-        className={`control-dock tv-hud-element ${isOverlayVisible ? '' : 'tv-hud-hidden'}`}
-      >
+      <div className={`control-dock tv-hud-element ${isOverlayVisible ? '' : 'tv-hud-hidden'}`}>
         <button
           type="button"
           onClick={() => openPanel(panelTab ?? 'settings')}
@@ -306,18 +383,24 @@ export default function App() {
         }}
         isOverlayVisible={isOverlayVisible}
         isDarkPhase={isDarkPhase}
-        pins={pins}
+        trips={trips}
         flights={flights}
-        onPinSelect={(pin) => {
-          setSelectedPin(pin);
-          const config = CITIES[pin.cityKey];
-          if (config) setSelectedCity(config);
+        countryCodes={countryCodes}
+        onTripSelect={openTripPanel}
+        onAddTrip={addTrip}
+        onUpdateTrip={updateTrip}
+        onRemoveTrip={removeTrip}
+        onImportTrips={(trips) => {
+          importTrips(trips);
+          setOpenTripCards({});
           resetIdleTimer();
         }}
-        onAddFlight={handleAddFlightRoute}
-        onRemoveFlight={removeFlight}
-        memories={memories}
-        onAddMemory={(pinId, title, body, quote) => addMemory({ pinId, title, body, quote })}
+        homeOrigin={homeOrigin}
+        homeCityKey={homeCityKey}
+        onHomeCityChange={(cityKey) => {
+          setHomeCityKey(cityKey);
+          resetIdleTimer();
+        }}
         solarState={solarState}
         currentTime={currentTime}
         onTimeChange={(val) => {
@@ -334,7 +417,6 @@ export default function App() {
           const config = CITIES[cityKey];
           if (config) {
             setSelectedCity(config);
-            setSelectedPin(null);
           }
           resetIdleTimer();
         }}
@@ -343,117 +425,53 @@ export default function App() {
           setMaterialMode(mode);
           resetIdleTimer();
         }}
-        showGrid={showGrid}
-        onToggleGrid={() => {
-          setShowGrid(!showGrid);
-          resetIdleTimer();
-        }}
         isTvMode={isTvMode}
         onToggleTvMode={() => {
           setIsTvMode(!isTvMode);
           resetIdleTimer();
         }}
+        showFlightPaths={mapSettings.showFlightPaths}
+        onToggleFlightPaths={() =>
+          setMapSettings((s) => ({ ...s, showFlightPaths: !s.showFlightPaths }))
+        }
+        highlightVisited={mapSettings.highlightVisited}
+        onToggleHighlightVisited={() =>
+          setMapSettings((s) => ({ ...s, highlightVisited: !s.highlightVisited }))
+        }
       />
 
-      {/* Pin detail card */}
-      {selectedPin && !panelTab && (
-        <div
-          className={`watercolor-card tv-hud-element fixed right-[max(1.5rem,calc(min(400px,30vw)+2.5rem))] top-8 z-40 flex w-[min(320px,26vw)] flex-col gap-4 rounded-lg border border-black/5 p-6 shadow-2xl transition-all duration-700 ${
-            isOverlayVisible ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 tv-hud-hidden-right'
-          }`}
-          style={{ fontFamily: 'var(--font-sans)' }}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <h3
-                className="text-lg font-medium text-[#2c2c2a]"
-                style={{ fontFamily: 'var(--font-serif)' }}
-              >
-                {selectedPin.name}
-              </h3>
-              <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#a58452]">
-                {pinSubtitle[selectedPin.cityKey] || 'Memorable Destination'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedPin(null);
+      {!panelTab &&
+        openTripIds.map((tripId) => {
+          const trip = trips.find((t) => t.id === tripId);
+          const layout = openTripCards[tripId];
+          const anchor = tripCardAnchors[tripId];
+          if (!trip || !layout || !anchor) return null;
+
+          const position = pinAnchoredCardPosition(
+            anchor.x,
+            anchor.y,
+            layout.offsetX,
+            layout.offsetY,
+          );
+
+          return (
+            <TripDetailCard
+              key={tripId}
+              trip={trip}
+              layout={layout}
+              position={position}
+              isDarkPhase={isDarkPhase}
+              isOverlayVisible={isOverlayVisible}
+              onClose={() => closeTripPanel(tripId)}
+              onFocus={() => focusTripPanel(tripId)}
+              onMoveOffset={(offsetX, offsetY) => moveTripPanelOffset(tripId, offsetX, offsetY)}
+              onOpenChronicle={() => {
+                setPanelTab('sketchbook');
                 resetIdleTimer();
               }}
-              className="rounded-full p-1.5 text-[#7c7c78] transition-colors hover:bg-black/5 hover:text-[#2c2c2a]"
-            >
-              <XIcon size={14} />
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-[#7c7c78]">
-              <Navigation size={9} />
-              <span>
-                {selectedPin.lat.toFixed(4)}° N, {Math.abs(selectedPin.lng).toFixed(4)}°{' '}
-                {selectedPin.lng < 0 ? 'W' : 'E'}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-[#7c7c78]">
-              <Clock size={9} />
-              <span>{CITIES[selectedPin.cityKey]?.timezone}</span>
-            </div>
-          </div>
-
-          <div className="relative flex h-28 items-center justify-center overflow-hidden rounded border border-black/5 bg-[#f4f3ec]">
-            <span
-              className="select-none text-2xl font-light uppercase tracking-[0.25em] text-[#2c2c2a]/20"
-              style={{ fontFamily: 'var(--font-serif)' }}
-            >
-              {selectedPin.name}
-            </span>
-          </div>
-
-          <p className="text-xs font-light leading-relaxed text-[#5c5c58]">
-            {selectedPin.description}
-          </p>
-
-          {memories.filter((m) => m.pinId === selectedPin.id).map((mem) => (
-            <div key={mem.id} className="border-l-2 border-[#a58452]/25 pl-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#a58452]">{mem.title}</p>
-              <p className="mt-1 text-xs font-light leading-relaxed text-[#5c5c58]">{mem.body}</p>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => {
-              setPanelTab('sketchbook');
-              setSelectedPin(null);
-              resetIdleTimer();
-            }}
-            className="w-full rounded border border-[#a58452]/20 py-2 text-[9px] font-medium uppercase tracking-widest text-[#a58452] transition-all hover:border-[#a58452]/50 hover:bg-[#a58452]/5"
-          >
-            Read journal entry
-          </button>
-        </div>
-      )}
+            />
+          );
+        })}
     </div>
-  );
-}
-
-function XIcon({ size = 16, className = '' }: { size?: number; className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
   );
 }

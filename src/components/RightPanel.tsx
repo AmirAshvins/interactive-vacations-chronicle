@@ -1,9 +1,9 @@
 import { BookOpen, Sliders, X } from 'lucide-react';
 import Sketchbook from './Sketchbook';
 import SettingsSidebar from './SettingsSidebar';
-import type { TravelPin, FlightRoute } from './WorldMap';
+import type { Trip, FlightRoute } from '../types/travelogue';
 import type { CityConfig, SolarState } from '../utils/solarEngine';
-import type { Memory } from '../hooks/useTravelogueStore';
+import type { HomeOrigin } from '../utils/flightRoutes';
 
 export type PanelTab = 'sketchbook' | 'settings';
 
@@ -13,15 +13,15 @@ interface RightPanelProps {
   onClose: () => void;
   isOverlayVisible: boolean;
   isDarkPhase: boolean;
-  // Sketchbook
-  pins: TravelPin[];
+  trips: Trip[];
   flights: FlightRoute[];
-  onPinSelect: (pin: TravelPin) => void;
-  onAddFlight: (fromKey: string, toKey: string) => void;
-  onRemoveFlight: (flightId: string) => void;
-  memories: Memory[];
-  onAddMemory: (pinId: string, title: string, body: string, quote?: string) => void;
-  // Settings
+  homeOrigin: HomeOrigin | null;
+  countryCodes: string[];
+  onTripSelect: (trip: Trip) => void;
+  onAddTrip: (trip: Trip) => void;
+  onUpdateTrip: (trip: Trip) => void;
+  onRemoveTrip: (id: string) => void;
+  onImportTrips: (trips: Trip[]) => void;
   solarState: SolarState;
   currentTime: number;
   onTimeChange: (time: number) => void;
@@ -29,12 +29,16 @@ interface RightPanelProps {
   onToggleTimeOverride: (override: boolean) => void;
   selectedCity: CityConfig;
   onCityChange: (cityKey: string) => void;
+  homeCityKey: string;
+  onHomeCityChange: (cityKey: string) => void;
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   onMaterialChange: (mode: 'oak' | 'cork' | 'walnut' | 'auto') => void;
-  showGrid: boolean;
-  onToggleGrid: () => void;
   isTvMode: boolean;
   onToggleTvMode: () => void;
+  showFlightPaths: boolean;
+  onToggleFlightPaths: () => void;
+  highlightVisited: boolean;
+  onToggleHighlightVisited: () => void;
 }
 
 export default function RightPanel({
@@ -43,13 +47,15 @@ export default function RightPanel({
   onClose,
   isOverlayVisible,
   isDarkPhase,
-  pins,
+  trips,
   flights,
-  onPinSelect,
-  onAddFlight,
-  onRemoveFlight,
-  memories,
-  onAddMemory,
+  homeOrigin,
+  countryCodes,
+  onTripSelect,
+  onAddTrip,
+  onUpdateTrip,
+  onRemoveTrip,
+  onImportTrips,
   solarState,
   currentTime,
   onTimeChange,
@@ -57,12 +63,16 @@ export default function RightPanel({
   onToggleTimeOverride,
   selectedCity,
   onCityChange,
+  homeCityKey,
+  onHomeCityChange,
   materialMode,
   onMaterialChange,
-  showGrid,
-  onToggleGrid,
   isTvMode,
   onToggleTvMode,
+  showFlightPaths,
+  onToggleFlightPaths,
+  highlightVisited,
+  onToggleHighlightVisited,
 }: RightPanelProps) {
   const isOpen = tab !== null;
 
@@ -76,7 +86,6 @@ export default function RightPanel({
         WebkitBackdropFilter: 'blur(28px)',
       }}
     >
-      {/* Tab bar + close */}
       <div className="right-panel-header flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
         <div className="right-panel-tabs flex flex-1 gap-1 rounded-full p-1">
           <button
@@ -97,7 +106,7 @@ export default function RightPanel({
             }`}
           >
             <Sliders size={14} />
-            Study
+            Settings
           </button>
         </div>
         <button
@@ -110,19 +119,20 @@ export default function RightPanel({
         </button>
       </div>
 
-      {/* Panel body */}
       <div className="min-h-0 flex-1 overflow-hidden">
         {tab === 'sketchbook' && (
           <Sketchbook
             embedded
             isDarkPhase={isDarkPhase}
-            pins={pins}
+            trips={trips}
             flights={flights}
-            onPinSelect={onPinSelect}
-            onAddFlight={onAddFlight}
-            onRemoveFlight={onRemoveFlight}
-            memories={memories}
-            onAddMemory={onAddMemory}
+            homeOrigin={homeOrigin}
+            countryCodes={countryCodes}
+            onTripSelect={onTripSelect}
+            onAddTrip={onAddTrip}
+            onUpdateTrip={onUpdateTrip}
+            onRemoveTrip={onRemoveTrip}
+            onImportTrips={onImportTrips}
           />
         )}
         {tab === 'settings' && (
@@ -135,12 +145,17 @@ export default function RightPanel({
             onToggleTimeOverride={onToggleTimeOverride}
             selectedCity={selectedCity}
             onCityChange={onCityChange}
+            homeCityKey={homeCityKey}
+            onHomeCityChange={onHomeCityChange}
+            countryCodes={countryCodes}
             materialMode={materialMode}
             onMaterialChange={onMaterialChange}
-            showGrid={showGrid}
-            onToggleGrid={onToggleGrid}
             isTvMode={isTvMode}
             onToggleTvMode={onToggleTvMode}
+            showFlightPaths={showFlightPaths}
+            onToggleFlightPaths={onToggleFlightPaths}
+            highlightVisited={highlightVisited}
+            onToggleHighlightVisited={onToggleHighlightVisited}
           />
         )}
       </div>

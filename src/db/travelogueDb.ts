@@ -1,0 +1,76 @@
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { Trip, TravelogueData } from '../types/travelogue';
+
+const DB_NAME = 'bedrood-azizi-travelogue';
+const DB_VERSION = 2;
+const META_INITIALIZED = 'initialized';
+
+interface TravelogueDB extends DBSchema {
+  trips: {
+    key: string;
+    value: Trip;
+  };
+  meta: {
+    key: string;
+    value: boolean;
+  };
+}
+
+let dbPromise: Promise<IDBPDatabase<TravelogueDB>> | null = null;
+
+function getDb() {
+  if (!dbPromise) {
+    dbPromise = openDB<TravelogueDB>(DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('trips', { keyPath: 'id' });
+          db.createObjectStore('meta');
+        }
+        if (oldVersion < 2 && (db.objectStoreNames as DOMStringList).contains('flights')) {
+          db.deleteObjectStore('flights' as 'trips');
+        }
+      },
+    });
+  }
+  return dbPromise;
+}
+
+async function replaceTrips(trips: Trip[]): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction(['trips', 'meta'], 'readwrite');
+  await tx.objectStore('trips').clear();
+  for (const trip of trips) {
+    await tx.objectStore('trips').put({ ...trip, images: trip.images ?? [] });
+  }
+  await tx.objectStore('meta').put(true, META_INITIALIZED);
+  await tx.done;
+}
+
+export async function loadTravelogue(initial: TravelogueData): Promise<TravelogueData> {
+  const db = await getDb();
+  const initialized = await db.get('meta', META_INITIALIZED);
+
+  if (initialized) {
+    const trips = await db.getAll('trips');
+    return {
+      trips: trips.map((t) => ({ ...t, images: t.images ?? [] })),
+    };
+  }
+
+  await replaceTrips(initial.trips);
+  return initial;
+}
+
+export async function replaceAllTrips(trips: Trip[]): Promise<void> {
+  await replaceTrips(trips);
+}
+
+export async function saveTrip(trip: Trip): Promise<void> {
+  const db = await getDb();
+  await db.put('trips', { ...trip, images: trip.images ?? [] });
+}
+
+export async function deleteTrip(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete('trips', id);
+}

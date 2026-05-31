@@ -1,8 +1,9 @@
 import React from 'react';
 import { CITIES } from '../utils/solarEngine';
 import type { CityConfig, SolarState } from '../utils/solarEngine';
-import { Sun, Moon, Clock, Layers, MapPin, Compass, X, Grid, Eye } from 'lucide-react';
+import { Sun, Moon, Clock, Layers, MapPin, Compass, X, Eye, Plane, Globe } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
+import HomeCityPicker from './HomeCityPicker';
 
 interface SettingsSidebarProps {
   embedded?: boolean;
@@ -15,12 +16,17 @@ interface SettingsSidebarProps {
   onToggleTimeOverride: (override: boolean) => void;
   selectedCity: CityConfig;
   onCityChange: (cityKey: string) => void;
+  homeCityKey: string;
+  onHomeCityChange: (cityKey: string) => void;
+  countryCodes: string[];
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   onMaterialChange: (mode: 'oak' | 'cork' | 'walnut' | 'auto') => void;
-  showGrid: boolean;
-  onToggleGrid: () => void;
   isTvMode: boolean;
   onToggleTvMode: () => void;
+  showFlightPaths?: boolean;
+  onToggleFlightPaths?: () => void;
+  highlightVisited?: boolean;
+  onToggleHighlightVisited?: () => void;
   isOverlayVisible?: boolean;
 }
 
@@ -35,12 +41,17 @@ export default function SettingsSidebar({
   onToggleTimeOverride,
   selectedCity,
   onCityChange,
+  homeCityKey,
+  onHomeCityChange,
+  countryCodes,
   materialMode,
   onMaterialChange,
-  showGrid,
-  onToggleGrid,
   isTvMode,
   onToggleTvMode,
+  showFlightPaths = true,
+  onToggleFlightPaths,
+  highlightVisited = true,
+  onToggleHighlightVisited,
   isOverlayVisible = true,
 }: SettingsSidebarProps) {
   
@@ -82,7 +93,7 @@ export default function SettingsSidebar({
                       key={c.name}
                       type="button"
                       onClick={() => onCityChange(c.name)}
-                      className={`flex-1 py-1.5 px-2 rounded-full text-[8.5px] uppercase tracking-wider font-semibold transition-all duration-300 cursor-pointer ${
+                      className={`flex-1 py-1.5 px-2 rounded-full text-[8.5px] uppercase tracking-wider font-semibold transition-all duration-150 cursor-pointer ${
                         isSelected
                           ? 'bg-[#a58452] text-white shadow-sm'
                           : isDarkPhase
@@ -114,6 +125,27 @@ export default function SettingsSidebar({
           </div>
         </div>
 
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
+            <Plane size={9} className="text-[#a58452]" />
+            <span>Home Origin</span>
+          </div>
+
+          <div className={`rounded-2xl border p-4 ${
+            isDarkPhase ? 'bg-black/10 border-white/5' : 'bg-[#fcfbf9]/60 border-black/5'
+          }`}>
+            <p className="mb-3 text-[10px] font-light leading-relaxed opacity-60">
+              Flight arcs draw from your home city to each journal entry automatically.
+            </p>
+            <HomeCityPicker
+              homeCityKey={homeCityKey}
+              countryCodes={countryCodes}
+              isDarkPhase={isDarkPhase}
+              onHomeCityChange={onHomeCityChange}
+            />
+          </div>
+        </div>
+
         {/* WIDGET 2: SUNLIGHT STUDY (SUN DIAL SLIDER) */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
@@ -128,7 +160,7 @@ export default function SettingsSidebar({
               <span className="text-[9px] uppercase tracking-widest font-sans font-semibold opacity-50">Solar Lock</span>
               <button
                 onClick={() => onToggleTimeOverride(!isTimeOverridden)}
-                className={`text-[8px] uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all duration-300 font-semibold cursor-pointer ${
+                className={`text-[8px] uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all duration-150 font-semibold cursor-pointer ${
                   isTimeOverridden 
                     ? 'bg-[#a58452]/20 text-[#a58452] border-[#a58452]/30 shadow-[inset_0_1px_3px_rgba(165,132,82,0.1)]' 
                     : isDarkPhase 
@@ -142,7 +174,7 @@ export default function SettingsSidebar({
 
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3.5 justify-between">
-                <Sun size={12} className={`opacity-40 transition-colors duration-300 ${isTimeOverridden ? 'text-[#a58452]' : ''}`} />
+                <Sun size={12} className={`opacity-40 transition-colors duration-150 ${isTimeOverridden ? 'text-[#a58452]' : ''}`} />
                 <input
                   type="range"
                   min="0"
@@ -153,7 +185,7 @@ export default function SettingsSidebar({
                   disabled={!isTimeOverridden}
                   className={`flex-1 ${!isTimeOverridden ? 'opacity-20 cursor-not-allowed' : ''}`}
                 />
-                <Moon size={12} className={`opacity-40 transition-colors duration-300 ${isTimeOverridden ? 'text-[#a58452]' : ''}`} />
+                <Moon size={12} className={`opacity-40 transition-colors duration-150 ${isTimeOverridden ? 'text-[#a58452]' : ''}`} />
               </div>
               
               <div className="flex flex-col gap-1 mt-1">
@@ -202,7 +234,7 @@ export default function SettingsSidebar({
                       key={mode}
                       type="button"
                       onClick={() => onMaterialChange(mode)}
-                      className={`flex-1 py-1.5 px-0.5 rounded-full text-[8.5px] uppercase tracking-wider font-semibold transition-all duration-300 cursor-pointer ${
+                      className={`flex-1 py-1.5 px-0.5 rounded-full text-[8.5px] uppercase tracking-wider font-semibold transition-all duration-150 cursor-pointer ${
                         isSelected
                           ? 'bg-[#a58452] text-white shadow-sm'
                           : isDarkPhase
@@ -235,14 +267,6 @@ export default function SettingsSidebar({
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[10px] font-light uppercase tracking-wider opacity-80">
-                <Grid size={11} className="opacity-40" />
-                <span>Blueprint Grid</span>
-              </div>
-              <ToggleSwitch checked={showGrid} onChange={onToggleGrid} label="Blueprint Grid" />
-            </div>
-
-            <div className="flex items-center justify-between border-t border-black/5 pt-3 dark:border-white/5">
-              <div className="flex items-center gap-2 text-[10px] font-light uppercase tracking-wider opacity-80">
                 <Eye size={11} className="opacity-40" />
                 <span>TV Screensaver</span>
               </div>
@@ -250,7 +274,43 @@ export default function SettingsSidebar({
                 checked={isTvMode}
                 onChange={onToggleTvMode}
                 label="TV Screensaver"
-                title={isTvMode ? 'TV mode on — controls auto-hide' : 'TV mode off — controls stay visible'}
+                title={isTvMode ? 'TV mode on — all controls auto-hide after idle' : 'TV mode off — controls stay visible'}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* WIDGET 5: MAP OVERLAYS */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
+            <Globe size={9} className="text-[#a58452]" />
+            <span>Map Overlays</span>
+          </div>
+
+          <div className={`p-4 rounded-2xl border flex flex-col gap-4.5 ${
+            isDarkPhase ? 'bg-black/10 border-white/5' : 'bg-[#fcfbf9]/60 border-black/5'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] font-light uppercase tracking-wider opacity-80">
+                <Plane size={11} className="opacity-40" />
+                <span>Flight Paths</span>
+              </div>
+              <ToggleSwitch
+                checked={showFlightPaths}
+                onChange={() => onToggleFlightPaths?.()}
+                label="Flight Paths"
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-black/5 pt-3 dark:border-white/5">
+              <div className="flex items-center gap-2 text-[10px] font-light uppercase tracking-wider opacity-80">
+                <Globe size={11} className="opacity-40" />
+                <span>Visited Countries</span>
+              </div>
+              <ToggleSwitch
+                checked={highlightVisited}
+                onChange={() => onToggleHighlightVisited?.()}
+                label="Visited Countries"
               />
             </div>
           </div>

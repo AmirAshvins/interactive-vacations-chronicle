@@ -47,7 +47,6 @@ export interface SolarState {
   spotlightOpacity: number;
   autoMaterial: 'oak' | 'cork' | 'walnut';
   textColor: string;
-  gridOpacity: number;
   glowColor: string;
 }
 
@@ -158,7 +157,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
   let spotlightOpacity = 0.45;
   let autoMaterial: 'oak' | 'cork' | 'walnut' = 'walnut';
   let textColor = 'rgba(255, 255, 255, 0.4)';
-  let gridOpacity = 0.02;
   let glowColor = 'rgba(229, 192, 123, 0.2)';
 
   if (decimalHour >= sunrise - blendWindow && decimalHour < sunrise + blendWindow) {
@@ -166,7 +164,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     phaseLabel = 'Sunrise Horizon';
     autoMaterial = baseMaterial === 'walnut' ? 'oak' : baseMaterial;
     textColor = 'rgba(28, 28, 30, 0.5)';
-    gridOpacity = 0.04;
     glowColor = 'rgba(252, 234, 222, 0.4)';
     spotlightOpacity = 0.0;
     const progress = (decimalHour - (sunrise - blendWindow)) / (blendWindow * 2);
@@ -179,7 +176,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     phaseLabel = 'Daylight Plaster';
     autoMaterial = baseMaterial === 'walnut' ? 'cork' : baseMaterial;
     textColor = 'rgba(28, 28, 30, 0.6)';
-    gridOpacity = 0.03;
     glowColor = 'rgba(255, 255, 255, 0.3)';
     spotlightOpacity = 0.0;
     const progress =
@@ -194,7 +190,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     phaseLabel = 'Golden Hour Study';
     autoMaterial = baseMaterial === 'walnut' ? 'cork' : baseMaterial;
     textColor = 'rgba(28, 28, 30, 0.55)';
-    gridOpacity = 0.04;
     glowColor = 'rgba(253, 244, 227, 0.5)';
     spotlightOpacity = 0.0;
     const progress = (decimalHour - (sunset - blendWindow * 1.5)) / (blendWindow * 1.5);
@@ -207,7 +202,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     phaseLabel = 'Twilight Gallery';
     autoMaterial = baseMaterial === 'walnut' ? 'oak' : baseMaterial;
     textColor = 'rgba(255, 255, 255, 0.4)';
-    gridOpacity = 0.03;
     glowColor = 'rgba(182, 192, 222, 0.3)';
     const progress = (decimalHour - sunset) / blendWindow;
     bgGradient = interpolateColor('#ffffff', '#141414', progress);
@@ -220,7 +214,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     phaseLabel = 'Midnight Gallery';
     autoMaterial = 'walnut';
     textColor = 'rgba(255, 255, 255, 0.35)';
-    gridOpacity = 0.025;
     glowColor = 'rgba(212, 175, 55, 0.25)';
     spotlightOpacity = 0.45;
     bgGradient = '#141414';
@@ -239,7 +232,6 @@ export function getSolarState(decimalHour: number, times: SolarTimes, baseMateri
     spotlightOpacity,
     autoMaterial,
     textColor,
-    gridOpacity,
     glowColor,
   };
 }

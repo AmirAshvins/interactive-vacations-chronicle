@@ -1,83 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { TravelPin, FlightRoute } from '../components/WorldMap';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { Trip, TravelogueData } from '../types/travelogue';
+import { loadTravelogue, saveTrip, deleteTrip, replaceAllTrips } from '../db/travelogueDb';
 
-export interface Memory {
-  id: string;
-  pinId: string;
-  title: string;
-  body: string;
-  quote?: string;
-  createdAt: string;
-}
-
-export interface TravelogueData {
-  pins: TravelPin[];
-  flights: FlightRoute[];
-  memories: Memory[];
-}
-
-const STORAGE_KEY = 'bedrood-azizi-travelogue';
+export type { Trip, TravelogueData };
 
 export function useTravelogueStore(initial: TravelogueData) {
-  const [data, setData] = useState<TravelogueData>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as TravelogueData;
-        return {
-          pins: parsed.pins?.length ? parsed.pins : initial.pins,
-          flights: parsed.flights?.length ? parsed.flights : initial.flights,
-          memories: parsed.memories ?? initial.memories,
-        };
-      }
-    } catch {
-      /* use defaults */
-    }
-    return initial;
-  });
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [ready, setReady] = useState(false);
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
+    let cancelled = false;
 
-  const addFlight = useCallback((flight: FlightRoute) => {
-    setData((prev) => ({ ...prev, flights: [...prev.flights, flight] }));
-  }, []);
+    loadTravelogue(initialRef.current).then((loaded) => {
+      if (!cancelled) {
+        setTrips(loaded.trips);
+        setReady(true);
+      }
+    });
 
-  const removeFlight = useCallback((id: string) => {
-    setData((prev) => ({ ...prev, flights: prev.flights.filter((f) => f.id !== id) }));
-  }, []);
-
-  const addMemory = useCallback((memory: Omit<Memory, 'id' | 'createdAt'>) => {
-    const entry: Memory = {
-      ...memory,
-      id: `mem-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+    return () => {
+      cancelled = true;
     };
-    setData((prev) => ({ ...prev, memories: [...prev.memories, entry] }));
-    return entry;
   }, []);
 
-  const updatePinDescription = useCallback((pinId: string, description: string) => {
-    setData((prev) => ({
-      ...prev,
-      pins: prev.pins.map((p) => (p.id === pinId ? { ...p, description } : p)),
-    }));
-  }, []);
+  const addTrip = useCallback((trip: Trip) => {
+    setTrips((prev) => [...prev, trip]);
+    if (ready) void saveTrip(trip);
+  }, [ready]);
 
-  const getMemoriesForPin = useCallback(
-    (pinId: string) => data.memories.filter((m) => m.pinId === pinId),
-    [data.memories],
+  const updateTrip = useCallback((trip: Trip) => {
+    setTrips((prev) => prev.map((t) => (t.id === trip.id ? trip : t)));
+    if (ready) void saveTrip(trip);
+  }, [ready]);
+
+  const removeTrip = useCallback((id: string) => {
+    setTrips((prev) => prev.filter((t) => t.id !== id));
+    if (ready) void deleteTrip(id);
+  }, [ready]);
+
+  const importTrips = useCallback((newTrips: Trip[]) => {
+    setTrips(newTrips);
+    if (ready) void replaceAllTrips(newTrips);
+  }, [ready]);
+
+  const visitedCountryCodes = useCallback(
+    () => [...new Set(trips.map((t) => t.countryCode.toLowerCase()))],
+    [trips],
   );
 
   return {
-    pins: data.pins,
-    flights: data.flights,
-    memories: data.memories,
-    addFlight,
-    removeFlight,
-    addMemory,
-    updatePinDescription,
-    getMemoriesForPin,
+    ready,
+    trips,
+    addTrip,
+    updateTrip,
+    removeTrip,
+    importTrips,
+    visitedCountryCodes,
   };
 }
