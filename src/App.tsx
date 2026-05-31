@@ -28,7 +28,7 @@ const INITIAL_TRIPS: Trip[] = [
     lng: -123.1207,
     description: 'A coastal mountain haven where modern architecture meets majestic wilderness.',
     material: 'brass',
-    images: [],
+    imageIds: [],
   },
   {
     id: 'pin-tor',
@@ -39,7 +39,7 @@ const INITIAL_TRIPS: Trip[] = [
     lng: -79.3832,
     description: 'The central anchor city of the Bedrood Azizi Family. Concrete lines and lakefront brick.',
     material: 'copper',
-    images: [],
+    imageIds: [],
   },
   {
     id: 'pin-teh',
@@ -50,7 +50,7 @@ const INITIAL_TRIPS: Trip[] = [
     lng: 51.389,
     description: 'An ancient mountain-framed valley, rich with Persian geometry and modernist architecture.',
     material: 'brass',
-    images: [],
+    imageIds: [],
   },
 ];
 
@@ -387,11 +387,11 @@ export default function App() {
         flights={flights}
         countryCodes={countryCodes}
         onTripSelect={openTripPanel}
-        onAddTrip={addTrip}
-        onUpdateTrip={updateTrip}
+        onAddTrip={(trip, imageChanges) => void addTrip(trip, imageChanges)}
+        onUpdateTrip={(trip, imageChanges) => void updateTrip(trip, imageChanges)}
         onRemoveTrip={removeTrip}
-        onImportTrips={(trips) => {
-          importTrips(trips);
+        onImportTrips={(imported) => {
+          void importTrips(imported);
           setOpenTripCards({});
           resetIdleTimer();
         }}

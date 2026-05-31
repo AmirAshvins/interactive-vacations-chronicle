@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import type { Trip } from '../types/travelogue';
+import type { TripImageChanges } from '../hooks/useTravelogueStore';
 import { getCountryName, MONTH_OPTIONS } from '../utils/countryUtils';
 import {
   findCityById,
@@ -8,7 +9,8 @@ import {
   matchCityForTrip,
   type WorldCity,
 } from '../data/worldCities';
-import { readImagesFromFiles } from './ImageCarousel';
+import { readImageBlobsFromFiles } from './ImageCarousel';
+import { getImageObjectUrl } from '../db/tripImages';
 import { X, Upload, Trash2, MapPin, Search } from 'lucide-react';
 
 const CUSTOM_CITY_ID = '__custom__';
@@ -18,10 +20,14 @@ interface TripDialogProps {
   trip: Trip | null;
   countryOptions: { code: string; name: string }[];
   isDarkPhase?: boolean;
-  onSave: (trip: Trip) => void;
+  onSave: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
 }
+
+type DraftImage =
+  | { kind: 'stored'; id: string; preview: string }
+  | { kind: 'pending'; blob: Blob; preview: string };
 
 function cityToDraftFields(city: WorldCity) {
   return {
@@ -43,7 +49,7 @@ function emptyTrip(countryCode = 'ca'): Trip {
     lng: city?.lng ?? 0,
     description: '',
     material: 'brass',
-    images: [],
+    imageIds: [],
   };
 }
 
@@ -63,6 +69,7 @@ export default function TripDialog({
   onClose,
 }: TripDialogProps) {
   const [draft, setDraft] = useState<Trip>(emptyTrip());
+  const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [selectedCityId, setSelectedCityId] = useState<string>(CUSTOM_CITY_ID);
   const [citySearch, setCitySearch] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -70,16 +77,34 @@ export default function TripDialog({
 
   useEffect(() => {
     if (!open) return;
-    if (trip) {
-      const next = { ...trip, images: [...trip.images] };
-      setDraft(next);
-      setSelectedCityId(resolveInitialCityKey(next));
-    } else {
-      const next = emptyTrip();
-      setDraft(next);
-      setSelectedCityId(next.cityKey ?? CUSTOM_CITY_ID);
+
+    let cancelled = false;
+
+    async function loadDraft() {
+      if (trip) {
+        setDraft({ ...trip, imageIds: [...(trip.imageIds ?? [])] });
+        setSelectedCityId(resolveInitialCityKey(trip));
+
+        const stored: DraftImage[] = [];
+        for (const id of trip.imageIds ?? []) {
+          const preview = await getImageObjectUrl(id);
+          if (preview && !cancelled) stored.push({ kind: 'stored', id, preview });
+        }
+        if (!cancelled) setDraftImages(stored);
+      } else {
+        const next = emptyTrip();
+        setDraft(next);
+        setSelectedCityId(next.cityKey ?? CUSTOM_CITY_ID);
+        setDraftImages([]);
+      }
+      setCitySearch('');
     }
-    setCitySearch('');
+
+    void loadDraft();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, trip]);
 
   const cities = useMemo(() => getCitiesForCountry(draft.countryCode), [draft.countryCode]);
@@ -145,20 +170,49 @@ export default function TripDialog({
   };
 
   const handleFiles = async (files: FileList | File[]) => {
-    const added = await readImagesFromFiles(files);
-    setDraft((d) => ({ ...d, images: [...d.images, ...added].slice(0, 12) }));
+    const blobs = await readImageBlobsFromFiles(files);
+    const pending: DraftImage[] = blobs.map((blob) => ({
+      kind: 'pending',
+      blob,
+      preview: URL.createObjectURL(blob),
+    }));
+    setDraftImages((prev) => [...prev, ...pending].slice(0, 12));
+  };
+
+  const removeDraftImage = (index: number) => {
+    setDraftImages((prev) => {
+      const removed = prev[index];
+      if (removed?.kind === 'pending') {
+        URL.revokeObjectURL(removed.preview);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const name = draft.name.trim();
     if (!name) return;
-    onSave({
-      ...draft,
-      name,
-      description: draft.description.trim(),
-      cityKey: isCustomCity ? undefined : selectedCityId,
-    });
+
+    const keptIds = draftImages
+      .filter((img): img is Extract<DraftImage, { kind: 'stored' }> => img.kind === 'stored')
+      .map((img) => img.id);
+    const add = draftImages
+      .filter((img): img is Extract<DraftImage, { kind: 'pending' }> => img.kind === 'pending')
+      .map((img) => img.blob);
+    const originalIds = trip?.imageIds ?? [];
+    const removeIds = originalIds.filter((id) => !keptIds.includes(id));
+
+    onSave(
+      {
+        ...draft,
+        name,
+        description: draft.description.trim(),
+        cityKey: isCustomCity ? undefined : selectedCityId,
+        imageIds: keptIds,
+      },
+      { add, removeIds },
+    );
     onClose();
   };
 
@@ -440,16 +494,14 @@ export default function TripDialog({
                   }}
                 />
               </div>
-              {draft.images.length > 0 && (
+              {draftImages.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
-                  {draft.images.map((src, i) => (
-                    <div key={i} className="relative aspect-square overflow-hidden rounded-lg">
-                      <img src={src} alt="" className="h-full w-full object-cover" />
+                  {draftImages.map((img, i) => (
+                    <div key={img.kind === 'stored' ? img.id : img.preview} className="relative aspect-square overflow-hidden rounded-lg">
+                      <img src={img.preview} alt="" className="h-full w-full object-cover" />
                       <button
                         type="button"
-                        onClick={() =>
-                          setDraft((d) => ({ ...d, images: d.images.filter((_, j) => j !== i) }))
-                        }
+                        onClick={() => removeDraftImage(i)}
                         className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white"
                       >
                         <X size={10} />

@@ -2,6 +2,8 @@ import { BookOpen, Sliders, X } from 'lucide-react';
 import Sketchbook from './Sketchbook';
 import SettingsSidebar from './SettingsSidebar';
 import type { Trip, FlightRoute } from '../types/travelogue';
+import type { ImportTrip } from '../utils/chronicleTransfer';
+import type { TripImageChanges } from '../hooks/useTravelogueStore';
 import type { CityConfig, SolarState } from '../utils/solarEngine';
 import type { HomeOrigin } from '../utils/flightRoutes';
 
@@ -18,10 +20,10 @@ interface RightPanelProps {
   homeOrigin: HomeOrigin | null;
   countryCodes: string[];
   onTripSelect: (trip: Trip) => void;
-  onAddTrip: (trip: Trip) => void;
-  onUpdateTrip: (trip: Trip) => void;
+  onAddTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
+  onUpdateTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onRemoveTrip: (id: string) => void;
-  onImportTrips: (trips: Trip[]) => void;
+  onImportTrips: (trips: ImportTrip[]) => void;
   solarState: SolarState;
   currentTime: number;
   onTimeChange: (time: number) => void;

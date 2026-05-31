@@ -1,7 +1,7 @@
 import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Trip } from '../types/travelogue';
 import { getCountryName, formatTripDuration } from '../utils/countryUtils';
-import ImageCarousel from './ImageCarousel';
+import TripImages from './TripImages';
 import { GripHorizontal, MapPin, Navigation, X } from 'lucide-react';
 
 export interface TripCardLayout {
@@ -151,8 +151,8 @@ export default function TripDetailCard({
           </p>
         </div>
 
-        {trip.images.length > 0 ? (
-          <ImageCarousel images={trip.images} alt={trip.name} isDarkPhase={isDarkPhase} />
+        {(trip.imageIds?.length ?? 0) > 0 ? (
+          <TripImages imageIds={trip.imageIds} alt={trip.name} isDarkPhase={isDarkPhase} />
         ) : (
           <div className="flex h-28 items-center justify-center rounded border border-black/5 bg-black/5">
             <span

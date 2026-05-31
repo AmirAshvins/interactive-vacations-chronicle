@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { Download, Upload } from 'lucide-react';
-import { downloadChronicleExport, readChronicleFile } from '../utils/chronicleTransfer';
+import { downloadChronicleExport, readChronicleFile, type ImportTrip } from '../utils/chronicleTransfer';
 import type { Trip } from '../types/travelogue';
 
 interface ChronicleTransferProps {
   trips: Trip[];
   isDarkPhase?: boolean;
-  onImport: (trips: Trip[]) => void;
+  onImport: (trips: ImportTrip[]) => void;
 }
 
 export default function ChronicleTransfer({
@@ -27,8 +27,16 @@ export default function ChronicleTransfer({
       setStatus({ type: 'error', message: 'Nothing to export — add a journal first.' });
       return;
     }
-    downloadChronicleExport(trips);
-    setStatus({ type: 'success', message: `Exported ${trips.length} journal${trips.length === 1 ? '' : 's'}.` });
+    void downloadChronicleExport(trips)
+      .then(() => {
+        setStatus({
+          type: 'success',
+          message: `Exported ${trips.length} journal${trips.length === 1 ? '' : 's'}.`,
+        });
+      })
+      .catch(() => {
+        setStatus({ type: 'error', message: 'Export failed.' });
+      });
   };
 
   const handleImportFile = useCallback(

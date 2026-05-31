@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { SolarState } from '../utils/solarEngine';
 import type { Trip, FlightRoute } from '../types/travelogue';
 import {
@@ -11,6 +11,7 @@ import { computeFlightLaneOffset, resolveFlightEndpoints, type HomeOrigin } from
 import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
 import { latLngToScreen } from '../utils/tripCardPosition';
 import MapPin from './MapPin';
+import FlightArc, { MAX_ANIMATED_FLIGHTS } from './FlightArc';
 
 export type { Trip, FlightRoute };
 
@@ -51,7 +52,7 @@ type ParsedNode =
 
 const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}world-map.svg`;
 
-const PLANE_PATH = 'M 0 0 L 11 -0.8 L 13 0 L 11 0.8 Z M 2.5 -3.2 L 7 -0.8 L 2.5 -0.8 Z M 2.5 0.8 L 7 0.8 L 2.5 3.2 Z';
+const FLIGHT_PLANE_CAP = MAX_ANIMATED_FLIGHTS * 2;
 
 export default function WorldMap({
   solarState,
@@ -158,21 +159,42 @@ export default function WorldMap({
       .catch((err) => console.error('[WorldMap] Failed to load map:', err));
   }, [onCountriesLoaded]);
 
-  const restartFlightAnimations = useCallback(() => {
-    const root = flightLayerRef.current;
-    if (!root) return;
-    root.querySelectorAll('animateMotion').forEach((node) => {
-      try {
-        (node as SVGAnimationElement).beginElement();
-      } catch {
-        /* SMIL unsupported or already running */
-      }
-    });
-  }, []);
+  const flightPaths = useMemo(() => {
+    if (!showFlightPaths) return [];
 
-  // Defer flight layer until map + paths are laid out — SMIL animateMotion fails if mounted too early.
+    return flights
+      .map((flight, idx) => {
+        const endpoints = resolveFlightEndpoints(flight, trips, homeOrigin);
+        if (!endpoints) return null;
+
+        const { fromLat, fromLng, toLat, toLng } = endpoints;
+        const laneOffset = computeFlightLaneOffset(flight, flights, idx);
+        const pathD = getGreatCirclePath(fromLat, fromLng, toLat, toLng, laneOffset);
+        const start = projectCoordinates(fromLat, fromLng);
+        const end = projectCoordinates(toLat, toLng);
+        const duration = Math.max(
+          6,
+          Math.min(
+            16,
+            Math.floor(Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2) / 30),
+          ),
+        );
+
+        return { id: flight.id, pathD, duration, idx };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  }, [showFlightPaths, flights, trips, homeOrigin]);
+
+  const flightGeometryKey = useMemo(
+    () => flightPaths.map((entry) => `${entry.id}:${entry.pathD}:${entry.duration}`).join(';'),
+    [flightPaths],
+  );
+
+  const animatePlanes = flightPaths.length <= FLIGHT_PLANE_CAP;
+
+  // Defer flight layer until map paths are laid out.
   useEffect(() => {
-    if (!showFlightPaths || mapNodes.length === 0) {
+    if (!showFlightPaths || mapNodes.length === 0 || flightPaths.length === 0) {
       setFlightsReady(false);
       return;
     }
@@ -193,13 +215,7 @@ export default function WorldMap({
       cancelAnimationFrame(innerFrame);
       setFlightsReady(false);
     };
-  }, [showFlightPaths, mapNodes.length, flights, trips]);
-
-  useEffect(() => {
-    if (!flightsReady) return;
-    const frame = requestAnimationFrame(() => restartFlightAnimations());
-    return () => cancelAnimationFrame(frame);
-  }, [flightsReady, flights, trips, restartFlightAnimations]);
+  }, [showFlightPaths, mapNodes.length, flightGeometryKey, flightPaths.length]);
 
   const isVisited = (countryId: string) =>
     highlightVisited && visitedSet.has(normalizeCountryCode(countryId));
@@ -482,42 +498,16 @@ export default function WorldMap({
                   viewBox={MAP_VIEWBOX_STRING}
                   preserveAspectRatio="xMidYMid meet"
                 >
-                  {flights.map((flight, idx) => {
-                    const endpoints = resolveFlightEndpoints(flight, trips, homeOrigin);
-                    if (!endpoints) return null;
-
-                    const { fromLat, fromLng, toLat, toLng } = endpoints;
-                    const laneOffset = computeFlightLaneOffset(flight, flights, idx);
-                    const pathD = getGreatCirclePath(fromLat, fromLng, toLat, toLng, laneOffset);
-                    const arcId = `arc-${flight.id}`;
-                    const start = projectCoordinates(fromLat, fromLng);
-                    const end = projectCoordinates(toLat, toLng);
-                    const duration = Math.max(
-                      6,
-                      Math.min(
-                        16,
-                        Math.floor(Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2) / 30),
-                      ),
-                    );
-
-                    return (
-                      <g key={flight.id}>
-                        <path id={arcId} d={pathD} className="flight-arc" pathLength={100} />
-                        <g className="flight-plane-group">
-                          <animateMotion
-                            dur={`${duration}s`}
-                            repeatCount="indefinite"
-                            rotate="auto"
-                            calcMode="linear"
-                            begin="0s"
-                          >
-                            <mpath href={`#${arcId}`} xlinkHref={`#${arcId}`} />
-                          </animateMotion>
-                          <path d={PLANE_PATH} className="flight-plane" transform="translate(-1, 0)" />
-                        </g>
-                      </g>
-                    );
-                  })}
+                  {flightPaths.map((entry) => (
+                    <FlightArc
+                      key={entry.id}
+                      id={entry.id}
+                      pathD={entry.pathD}
+                      duration={entry.duration}
+                      animatePlane={animatePlanes}
+                      animationDelay={entry.idx * 0.35}
+                    />
+                  ))}
                 </svg>
               )}
 

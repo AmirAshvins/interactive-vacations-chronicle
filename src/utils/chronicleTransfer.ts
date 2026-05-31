@@ -1,17 +1,32 @@
 import type { Trip, ChronicleExport } from '../types/travelogue';
+import { resolveImageIdsToDataUrls } from '../db/tripImages';
 
 export const CHRONICLE_EXPORT_VERSION = 1;
 
-export function buildChronicleExport(trips: Trip[]): ChronicleExport {
+/** Trip parsed from a chronicle JSON file — images arrive as blobs after import */
+export interface ImportTrip extends Omit<Trip, 'imageIds'> {
+  imageIds?: string[];
+  importImages?: Blob[];
+}
+
+export async function buildChronicleExport(trips: Trip[]): Promise<ChronicleExport> {
+  const exportedTrips = await Promise.all(
+    trips.map(async (trip) => {
+      const images = await resolveImageIdsToDataUrls(trip.imageIds ?? []);
+      const { imageIds: _ids, ...rest } = trip;
+      return { ...rest, images };
+    }),
+  );
+
   return {
     version: CHRONICLE_EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
-    trips,
+    trips: exportedTrips as unknown as Trip[],
   };
 }
 
-export function downloadChronicleExport(trips: Trip[]): void {
-  const payload = buildChronicleExport(trips);
+export async function downloadChronicleExport(trips: Trip[]): Promise<void> {
+  const payload = await buildChronicleExport(trips);
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const date = new Date().toISOString().slice(0, 10);
@@ -22,7 +37,7 @@ export function downloadChronicleExport(trips: Trip[]): void {
   URL.revokeObjectURL(url);
 }
 
-export function parseChronicleImport(raw: unknown): Trip[] {
+export async function parseChronicleImport(raw: unknown): Promise<ImportTrip[]> {
   let tripsRaw: unknown;
 
   if (Array.isArray(raw)) {
@@ -38,9 +53,9 @@ export function parseChronicleImport(raw: unknown): Trip[] {
     throw new Error('Invalid chronicle file.');
   }
 
-  const trips = (tripsRaw as unknown[])
-    .map(normalizeTrip)
-    .filter((t): t is Trip => t !== null);
+  const trips = (
+    await Promise.all((tripsRaw as unknown[]).map((entry) => normalizeImportTrip(entry)))
+  ).filter((t): t is ImportTrip => t !== null);
 
   if (trips.length === 0) {
     throw new Error('No valid journal entries found in file.');
@@ -57,7 +72,7 @@ export function parseChronicleImport(raw: unknown): Trip[] {
   return trips;
 }
 
-export async function readChronicleFile(file: File): Promise<Trip[]> {
+export async function readChronicleFile(file: File): Promise<ImportTrip[]> {
   if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
     throw new Error('Please choose a .json chronicle file.');
   }
@@ -73,7 +88,7 @@ export async function readChronicleFile(file: File): Promise<Trip[]> {
   return parseChronicleImport(parsed);
 }
 
-function normalizeTrip(raw: unknown): Trip | null {
+async function normalizeImportTrip(raw: unknown): Promise<ImportTrip | null> {
   if (!raw || typeof raw !== 'object') return null;
   const t = raw as Record<string, unknown>;
 
@@ -89,11 +104,16 @@ function normalizeTrip(raw: unknown): Trip | null {
     return null;
   }
 
-  const images = Array.isArray(t.images)
-    ? t.images.filter((img): img is string => typeof img === 'string')
-    : [];
+  const importImages: Blob[] = [];
+  if (Array.isArray(t.images)) {
+    for (const img of t.images) {
+      if (typeof img !== 'string') continue;
+      const blob = await dataUrlToBlob(img);
+      if (blob) importImages.push(blob);
+    }
+  }
 
-  const trip: Trip = {
+  const trip: ImportTrip = {
     id,
     countryCode,
     name,
@@ -101,7 +121,7 @@ function normalizeTrip(raw: unknown): Trip | null {
     lng,
     description,
     material,
-    images,
+    importImages: importImages.length ? importImages : undefined,
   };
 
   if (typeof t.cityKey === 'string' && t.cityKey.trim()) {
@@ -114,4 +134,13 @@ function normalizeTrip(raw: unknown): Trip | null {
   if (typeof t.endMonth === 'number') trip.endMonth = t.endMonth;
 
   return trip;
+}
+
+async function dataUrlToBlob(dataUrl: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  } catch {
+    return null;
+  }
 }

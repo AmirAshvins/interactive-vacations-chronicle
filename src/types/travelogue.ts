@@ -11,7 +11,8 @@ export interface Trip {
   startMonth?: number;
   endYear?: number;
   endMonth?: number;
-  images: string[];
+  /** References blobs in IndexedDB `images` store — not inlined on the trip record */
+  imageIds: string[];
 }
 
 export interface FlightRoute {

@@ -99,7 +99,7 @@ export default function ImageCarousel({
   );
 }
 
-async function compressImage(file: File, maxDim = 1200, quality = 0.82): Promise<string> {
+async function compressImageToBlob(file: File, maxDim = 1200, quality = 0.82): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -118,10 +118,34 @@ async function compressImage(file: File, maxDim = 1200, quality = 0.82): Promise
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('Compression failed'))),
+        'image/jpeg',
+        quality,
+      );
     };
     img.onerror = reject;
     img.src = url;
+  });
+}
+
+export async function readImageBlobsFromFiles(files: FileList | File[]): Promise<Blob[]> {
+  const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
+  const results: Blob[] = [];
+  for (const file of list.slice(0, 12)) {
+    results.push(await compressImageToBlob(file));
+  }
+  return results;
+}
+
+/** @deprecated use readImageBlobsFromFiles — kept for legacy callers */
+async function compressImage(file: File, maxDim = 1200, quality = 0.82): Promise<string> {
+  const blob = await compressImageToBlob(file, maxDim, quality);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
 }
 

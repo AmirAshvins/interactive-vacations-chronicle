@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-virtual": "^3.13.26",
     "idb": "^8.0.3",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
