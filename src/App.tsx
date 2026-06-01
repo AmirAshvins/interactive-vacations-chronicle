@@ -21,41 +21,7 @@ import { TvFocusProvider } from './context/TvFocusContext';
 import EnvironmentDebugBar from './components/EnvironmentDebugBar';
 import ControlDock from './components/ControlDock';
 
-const INITIAL_TRIPS: Trip[] = [
-  {
-    id: 'pin-van',
-    countryCode: 'ca',
-    cityKey: 'vancouver',
-    name: 'Vancouver',
-    lat: 49.2827,
-    lng: -123.1207,
-    description: 'A coastal mountain haven where modern architecture meets majestic wilderness.',
-    material: 'brass',
-    imageIds: [],
-  },
-  {
-    id: 'pin-tor',
-    countryCode: 'ca',
-    cityKey: 'toronto',
-    name: 'Toronto',
-    lat: 43.6532,
-    lng: -79.3832,
-    description: 'The central anchor city of the Bedrood Azizi Family. Concrete lines and lakefront brick.',
-    material: 'copper',
-    imageIds: [],
-  },
-  {
-    id: 'pin-teh',
-    countryCode: 'ir',
-    cityKey: 'tehran',
-    name: 'Tehran',
-    lat: 35.6892,
-    lng: 51.389,
-    description: 'An ancient mountain-framed valley, rich with Persian geometry and modernist architecture.',
-    material: 'brass',
-    imageIds: [],
-  },
-];
+const INITIAL_TRIPS: Trip[] = [];
 
 export default function App() {
   const appSettings = useAppSettings();
