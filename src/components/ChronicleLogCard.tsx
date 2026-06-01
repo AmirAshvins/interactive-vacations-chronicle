@@ -9,6 +9,7 @@ interface ChronicleLogCardProps {
   trip: Trip;
   index: number;
   isDarkPhase: boolean;
+  isTvFocused?: boolean;
   hasFlight: boolean;
   homeOrigin: HomeOrigin | null;
   onSelect: (trip: Trip) => void;
@@ -19,6 +20,7 @@ function ChronicleLogCard({
   trip,
   index,
   isDarkPhase,
+  isTvFocused = false,
   hasFlight,
   homeOrigin,
   onSelect,
@@ -31,6 +33,8 @@ function ChronicleLogCard({
     <div
       onClick={() => onSelect(trip)}
       className={`group relative flex cursor-pointer flex-col gap-2 overflow-hidden rounded-2xl border p-4 transition-all duration-150 ${
+        isTvFocused ? 'tv-focused chronicle-log-tv-focused' : ''
+      } ${
         isDarkPhase
           ? 'border-transparent bg-black/10 hover:border-white/5 hover:bg-black/20'
           : 'border-transparent bg-[#fcfbf9]/50 hover:border-black/5 hover:bg-white hover:shadow-md'
@@ -55,7 +59,7 @@ function ChronicleLogCard({
           <button
             type="button"
             onClick={(e) => onEdit(trip, e)}
-            className={`rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100 ${
+            className={`chronicle-log-edit rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100 ${
               isDarkPhase ? 'hover:bg-white/10' : 'hover:bg-black/5'
             }`}
             aria-label="Edit journey"

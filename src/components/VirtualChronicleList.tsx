@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Trip } from '../types/travelogue';
 import type { HomeOrigin } from '../utils/flightRoutes';
+import { useTvFocus } from '../context/TvFocusContext';
 import ChronicleLogCard, { estimateCardHeight } from './ChronicleLogCard';
 
 interface VirtualChronicleListProps {
@@ -24,6 +25,7 @@ export default function VirtualChronicleList({
   emptyState,
 }: VirtualChronicleListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tv = useTvFocus();
 
   const virtualizer = useVirtualizer({
     count: trips.length,
@@ -33,12 +35,22 @@ export default function VirtualChronicleList({
     gap: 12,
   });
 
+  useEffect(() => {
+    tv.registerChronicleScroller((index) => {
+      if (index < 0 || index >= trips.length) return;
+      virtualizer.scrollToIndex(index, { align: 'auto' });
+    });
+  }, [tv, virtualizer, trips.length]);
+
   if (trips.length === 0) {
     return <>{emptyState}</>;
   }
 
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-container">
+    <div
+      ref={scrollRef}
+      className="sketchbook-chronicle-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
+    >
       <div
         className="relative w-full"
         style={{ height: `${virtualizer.getTotalSize()}px` }}
@@ -57,6 +69,7 @@ export default function VirtualChronicleList({
                 trip={trip}
                 index={item.index}
                 isDarkPhase={isDarkPhase}
+                isTvFocused={tv.isChronicleFocused(item.index)}
                 hasFlight={flightTripIds.has(trip.id)}
                 homeOrigin={homeOrigin}
                 onSelect={onTripSelect}

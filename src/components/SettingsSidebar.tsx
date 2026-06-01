@@ -1,9 +1,10 @@
 import React from 'react';
 import { CITIES } from '../utils/solarEngine';
 import type { CityConfig, SolarState } from '../utils/solarEngine';
-import { Sun, Moon, Clock, Layers, MapPin, Compass, X, Eye, Plane, Globe } from 'lucide-react';
+import { Sun, Moon, Clock, Layers, MapPin, X, Plane, Globe } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 import HomeCityPicker from './HomeCityPicker';
+import EnvironmentControls from './EnvironmentControls';
 
 interface SettingsSidebarProps {
   embedded?: boolean;
@@ -21,8 +22,6 @@ interface SettingsSidebarProps {
   countryCodes: string[];
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   onMaterialChange: (mode: 'oak' | 'cork' | 'walnut' | 'auto') => void;
-  isTvMode: boolean;
-  onToggleTvMode: () => void;
   showFlightPaths?: boolean;
   onToggleFlightPaths?: () => void;
   highlightVisited?: boolean;
@@ -46,8 +45,6 @@ export default function SettingsSidebar({
   countryCodes,
   materialMode,
   onMaterialChange,
-  isTvMode,
-  onToggleTvMode,
   showFlightPaths = true,
   onToggleFlightPaths,
   highlightVisited = true,
@@ -69,7 +66,8 @@ export default function SettingsSidebar({
   const isDarkPhase = solarState.phase === 'night' || solarState.phase === 'twilight';
 
   const body = (
-    <div className="flex h-full flex-col overflow-y-auto p-5 scroll-container gap-5">
+    <div className="settings-embedded flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="settings-embedded-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain scroll-container p-5">
         
         {/* WIDGET 1: LOCATION CALIBRATION */}
         <div className="flex flex-col gap-2.5">
@@ -255,30 +253,8 @@ export default function SettingsSidebar({
           </div>
         </div>
 
-        {/* WIDGET 4: LAYOUT PREFERENCES */}
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
-            <Compass size={9} className="text-[#a58452]" />
-            <span>Display Modes</span>
-          </div>
-
-          <div className={`p-4 rounded-2xl border flex flex-col gap-4.5 ${
-            isDarkPhase ? 'bg-black/10 border-white/5' : 'bg-[#fcfbf9]/60 border-black/5'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[10px] font-light uppercase tracking-wider opacity-80">
-                <Eye size={11} className="opacity-40" />
-                <span>TV Screensaver</span>
-              </div>
-              <ToggleSwitch
-                checked={isTvMode}
-                onChange={onToggleTvMode}
-                label="TV Screensaver"
-                title={isTvMode ? 'TV mode on — all controls auto-hide after idle' : 'TV mode off — controls stay visible'}
-              />
-            </div>
-          </div>
-        </div>
+        {/* WIDGET 4: ENVIRONMENT & DISPLAY */}
+        <EnvironmentControls isDarkPhase={isDarkPhase} />
 
         {/* WIDGET 5: MAP OVERLAYS */}
         <div className="flex flex-col gap-2.5">
@@ -316,6 +292,7 @@ export default function SettingsSidebar({
           </div>
         </div>
 
+      </div>
     </div>
   );
 

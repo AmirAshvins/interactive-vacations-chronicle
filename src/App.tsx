@@ -16,7 +16,10 @@ import { deriveJournalFlights, getHomeOrigin } from './utils/flightRoutes';
 import { useTravelogueStore } from './hooks/useTravelogueStore';
 import { useAppSettings } from './hooks/useAppSettings';
 import { getSolarUiTheme, SOLAR_CLOCK_TRANSITION_MS, SOLAR_MANUAL_TRANSITION_MS } from './utils/solarTheme';
-import { Sliders } from 'lucide-react';
+import { EnvironmentProvider, useEnvironmentContext } from './context/EnvironmentContext';
+import { TvFocusProvider } from './context/TvFocusContext';
+import EnvironmentDebugBar from './components/EnvironmentDebugBar';
+import ControlDock from './components/ControlDock';
 
 const INITIAL_TRIPS: Trip[] = [
   {
@@ -55,6 +58,31 @@ const INITIAL_TRIPS: Trip[] = [
 ];
 
 export default function App() {
+  const appSettings = useAppSettings();
+
+  return (
+    <EnvironmentProvider
+      tvInteraction={appSettings.tvInteraction}
+      mobileLayout={appSettings.mobileLayout}
+      isTvScreensaver={appSettings.isTvScreensaver}
+      setTvInteraction={appSettings.setTvInteraction}
+      setMobileLayout={appSettings.setMobileLayout}
+      setTvScreensaver={appSettings.setTvScreensaver}
+    >
+      <TravelogueApp appSettings={appSettings} />
+    </EnvironmentProvider>
+  );
+}
+
+function TravelogueApp({
+  appSettings,
+}: {
+  appSettings: ReturnType<typeof useAppSettings>;
+}) {
+  const { tvInteraction } = useEnvironmentContext();
+  const [pinScreenPositions, setPinScreenPositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
   const [selectedCity, setSelectedCity] = useState<CityConfig>(CITIES.toronto);
   const [currentTime, setCurrentTime] = useState<number>(12.0);
   const [isTimeOverridden, setIsTimeOverridden] = useState<boolean>(false);
@@ -79,14 +107,13 @@ export default function App() {
 
   const {
     materialMode,
-    isTvMode,
+    isTvScreensaver,
     mapSettings,
     homeCityKey,
     setMaterialMode,
-    setIsTvMode,
     setHomeCityKey,
     setMapSettings,
-  } = useAppSettings();
+  } = appSettings;
 
   const travelogue = useTravelogueStore({
     trips: INITIAL_TRIPS,
@@ -109,14 +136,14 @@ export default function App() {
   );
 
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isTvModeRef = useRef(isTvMode);
-  isTvModeRef.current = isTvMode;
+  const isTvScreensaverRef = useRef(isTvScreensaver);
+  isTvScreensaverRef.current = isTvScreensaver;
 
   const scheduleOverlayHide = useCallback(() => {
     if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
     idleTimeoutRef.current = null;
 
-    if (isTvModeRef.current) {
+    if (isTvScreensaverRef.current) {
       idleTimeoutRef.current = setTimeout(() => setIsOverlayVisible(false), 8000);
     }
   }, []);
@@ -127,7 +154,7 @@ export default function App() {
   }, [scheduleOverlayHide]);
 
   useEffect(() => {
-    if (!isTvMode) {
+    if (!isTvScreensaver) {
       setIsOverlayVisible(true);
       if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
       return;
@@ -137,6 +164,7 @@ export default function App() {
 
     const handleWake = () => resetIdleTimer();
     const handleKey = (e: KeyboardEvent) => {
+      if (tvInteraction) return;
       if (e.key === 'Escape') {
         setPanelTab(null);
         setOpenTripCards({});
@@ -154,7 +182,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKey);
       if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
     };
-  }, [isTvMode, resetIdleTimer, scheduleOverlayHide]);
+  }, [isTvScreensaver, resetIdleTimer, scheduleOverlayHide, tvInteraction]);
 
   useEffect(() => {
     let active = true;
@@ -317,7 +345,20 @@ export default function App() {
 
   const openTripIds = Object.keys(openTripCards);
 
-  return (
+  const topTripCardId = useMemo(() => {
+    const entries = Object.entries(openTripCards);
+    if (!entries.length) return null;
+    return entries.reduce((best, [id, layout]) =>
+      layout.z > (openTripCards[best]?.z ?? 0) ? id : best,
+    entries[0][0]);
+  }, [openTripCards]);
+
+  const closeAllTripPanels = useCallback(() => {
+    setOpenTripCards({});
+    resetIdleTimer();
+  }, [resetIdleTimer]);
+
+  const appContent = (
     <div className="relative h-full w-full overflow-hidden">
       {!travelogueReady && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#f5f0e8]/80 backdrop-blur-sm">
@@ -336,6 +377,7 @@ export default function App() {
         onPinClick={openTripPanel}
         onTripLocationChange={handleTripLocationChange}
         onTripCardAnchorsChange={handleTripCardAnchorsChange}
+        onPinScreenPositionsChange={tvInteraction ? setPinScreenPositions : undefined}
         onCountriesLoaded={handleCountriesLoaded}
         materialMode={materialMode}
         isOverlayVisible={isOverlayVisible}
@@ -359,17 +401,11 @@ export default function App() {
         </div>
       )}
 
-      <div className={`control-dock tv-hud-element ${isOverlayVisible ? '' : 'tv-hud-hidden'}`}>
-        <button
-          type="button"
-          onClick={() => openPanel(panelTab ?? 'settings')}
-          className={`dock-btn dock-btn-settings dock-btn-icon-only ${panelTab ? 'active' : ''}`}
-          title="Open settings panel"
-          aria-label="Settings"
-        >
-          <Sliders size={16} />
-        </button>
-      </div>
+      <ControlDock
+        isOverlayVisible={isOverlayVisible}
+        panelOpen={panelTab !== null}
+        onOpenSettings={() => openPanel(panelTab ?? 'settings')}
+      />
 
       <RightPanel
         tab={panelTab}
@@ -425,11 +461,6 @@ export default function App() {
           setMaterialMode(mode);
           resetIdleTimer();
         }}
-        isTvMode={isTvMode}
-        onToggleTvMode={() => {
-          setIsTvMode(!isTvMode);
-          resetIdleTimer();
-        }}
         showFlightPaths={mapSettings.showFlightPaths}
         onToggleFlightPaths={() =>
           setMapSettings((s) => ({ ...s, showFlightPaths: !s.showFlightPaths }))
@@ -462,6 +493,7 @@ export default function App() {
               position={position}
               isDarkPhase={isDarkPhase}
               isOverlayVisible={isOverlayVisible}
+              isPrimaryOpenCard={tripId === topTripCardId}
               onClose={() => closeTripPanel(tripId)}
               onFocus={() => focusTripPanel(tripId)}
               onMoveOffset={(offsetX, offsetY) => moveTripPanelOffset(tripId, offsetX, offsetY)}
@@ -472,6 +504,33 @@ export default function App() {
             />
           );
         })}
+      <EnvironmentDebugBar />
     </div>
+  );
+
+  return (
+    <TvFocusProvider
+      enabled={tvInteraction}
+      trips={trips}
+      pinPositions={pinScreenPositions}
+      panelTab={panelTab}
+      openTripIds={openTripIds}
+      topTripCardId={topTripCardId}
+      chronicleCount={trips.length}
+      isOverlayVisible={isOverlayVisible}
+      onOpenPanel={openPanel}
+      onClosePanel={() => setPanelTab(null)}
+      onPanelTabChange={setPanelTab}
+      onOpenTrip={openTripPanel}
+      onCloseTrip={closeTripPanel}
+      onCloseAllTrips={closeAllTripPanels}
+      onOpenChronicleFromCard={() => {
+        setPanelTab('sketchbook');
+        resetIdleTimer();
+      }}
+      onResetIdle={resetIdleTimer}
+    >
+      {appContent}
+    </TvFocusProvider>
   );
 }

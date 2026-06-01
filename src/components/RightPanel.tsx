@@ -1,4 +1,9 @@
 import { BookOpen, Sliders, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { useTvFocus } from '../context/TvFocusContext';
+import { useEnvironmentContext } from '../context/EnvironmentContext';
+import { useBottomSheetDrag } from '../hooks/useBottomSheetDrag';
+import { panelHudVisibilityClasses } from '../utils/panelVisibility';
 import Sketchbook from './Sketchbook';
 import SettingsSidebar from './SettingsSidebar';
 import type { Trip, FlightRoute } from '../types/travelogue';
@@ -35,8 +40,6 @@ interface RightPanelProps {
   onHomeCityChange: (cityKey: string) => void;
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   onMaterialChange: (mode: 'oak' | 'cork' | 'walnut' | 'auto') => void;
-  isTvMode: boolean;
-  onToggleTvMode: () => void;
   showFlightPaths: boolean;
   onToggleFlightPaths: () => void;
   highlightVisited: boolean;
@@ -69,25 +72,54 @@ export default function RightPanel({
   onHomeCityChange,
   materialMode,
   onMaterialChange,
-  isTvMode,
-  onToggleTvMode,
   showFlightPaths,
   onToggleFlightPaths,
   highlightVisited,
   onToggleHighlightVisited,
 }: RightPanelProps) {
   const isOpen = tab !== null;
+  const isVisible = isOpen && isOverlayVisible;
+  const tv = useTvFocus();
+  const { mobileLayout } = useEnvironmentContext();
+  const hudVisibility = panelHudVisibilityClasses(mobileLayout, isOpen, isOverlayVisible);
+
+  const sheetDrag = useBottomSheetDrag({
+    enabled: mobileLayout && isVisible,
+    onDismiss: onClose,
+  });
+
+  useEffect(() => {
+    if (!isVisible) sheetDrag.reset();
+  }, [isVisible, sheetDrag.reset]);
+
+  const sheetTransform =
+    mobileLayout && isVisible
+      ? `translateY(${sheetDrag.offsetY}px)`
+      : undefined;
 
   return (
     <div
-      className={`right-panel fixed right-6 top-6 bottom-28 z-40 flex w-[min(400px,30vw)] min-w-[320px] flex-col overflow-hidden rounded-2xl border tv-hud-element ${
-        isOpen && isOverlayVisible ? 'opacity-100 translate-x-0' : 'tv-hud-hidden-right pointer-events-none'
+      className={`right-panel fixed right-6 top-6 bottom-28 z-40 flex w-[min(400px,30vw)] min-w-[320px] flex-col overflow-hidden rounded-2xl border tv-hud-element ${hudVisibility} ${
+        sheetDrag.isDragging ? 'right-panel--dragging' : ''
       } ${isDarkPhase ? 'right-panel-dark' : 'right-panel-light'}`}
       style={{
         backdropFilter: 'blur(28px)',
         WebkitBackdropFilter: 'blur(28px)',
+        transform: sheetTransform,
+        transition: sheetDrag.isDragging ? 'none' : undefined,
       }}
     >
+      <div
+        className={`right-panel-drag-zone shrink-0 touch-none ${mobileLayout ? '' : 'hidden'}`}
+        onPointerDown={sheetDrag.onPointerDown}
+        onPointerMove={sheetDrag.onPointerMove}
+        onPointerUp={sheetDrag.onPointerUp}
+        onPointerCancel={sheetDrag.onPointerCancel}
+        aria-label="Drag down to close"
+      >
+        <div className="right-panel-sheet-handle" aria-hidden />
+      </div>
+
       <div className="right-panel-header flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
         <div className="right-panel-tabs flex flex-1 gap-1 rounded-full p-1">
           <button
@@ -95,7 +127,7 @@ export default function RightPanel({
             onClick={() => onTabChange('sketchbook')}
             className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[10px] font-semibold uppercase tracking-widest ${
               tab === 'sketchbook' ? 'right-panel-tab-active' : ''
-            }`}
+            } ${tv.isPanelTabFocused(0) ? 'tv-focused' : ''}`}
           >
             <BookOpen size={14} />
             Chronicle
@@ -105,7 +137,7 @@ export default function RightPanel({
             onClick={() => onTabChange('settings')}
             className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[10px] font-semibold uppercase tracking-widest ${
               tab === 'settings' ? 'right-panel-tab-active' : ''
-            }`}
+            } ${tv.isPanelTabFocused(1) ? 'tv-focused' : ''}`}
           >
             <Sliders size={14} />
             Settings
@@ -114,14 +146,16 @@ export default function RightPanel({
         <button
           type="button"
           onClick={onClose}
-          className="right-panel-close flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          className={`right-panel-close flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+            tv.enabled && tv.state.zone === 'panel-header' ? 'tv-focused' : ''
+          }`}
           aria-label="Close panel"
         >
           <X size={16} />
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="right-panel-body min-h-0 flex-1 overflow-hidden">
         {tab === 'sketchbook' && (
           <Sketchbook
             embedded
@@ -152,8 +186,6 @@ export default function RightPanel({
             countryCodes={countryCodes}
             materialMode={materialMode}
             onMaterialChange={onMaterialChange}
-            isTvMode={isTvMode}
-            onToggleTvMode={onToggleTvMode}
             showFlightPaths={showFlightPaths}
             onToggleFlightPaths={onToggleFlightPaths}
             highlightVisited={highlightVisited}

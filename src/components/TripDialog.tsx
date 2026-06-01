@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Trip } from '../types/travelogue';
 import type { TripImageChanges } from '../hooks/useTravelogueStore';
 import { getCountryName, MONTH_OPTIONS } from '../utils/countryUtils';
@@ -126,6 +127,15 @@ export default function TripDialog({
 
   const isCustomCity = selectedCityId === CUSTOM_CITY_ID;
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const shellClass = isDarkPhase
@@ -216,17 +226,17 @@ export default function TripDialog({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className="trip-dialog-portal"
       onClick={onClose}
       role="presentation"
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="trip-dialog-backdrop" aria-hidden />
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className={`relative z-10 flex max-h-[min(92vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border shadow-2xl sm:rounded-2xl ${shellClass}`}
+        className={`trip-dialog-panel border shadow-2xl ${shellClass}`}
       >
         <div
           className={`flex shrink-0 items-center justify-between gap-3 border-b px-5 py-4 ${isDarkPhase ? 'border-white/10' : 'border-black/8'}`}
@@ -547,7 +557,8 @@ export default function TripDialog({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

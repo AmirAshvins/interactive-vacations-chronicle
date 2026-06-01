@@ -3,8 +3,8 @@ import type { Trip } from '../types/travelogue';
 interface MapPinProps {
   pin: Trip;
   selected: boolean;
+  tvFocused?: boolean;
   onClick: () => void;
-  /** When true, parent SVG group handles anchor positioning */
   embedded?: boolean;
   draggable?: boolean;
 }
@@ -12,6 +12,7 @@ interface MapPinProps {
 export default function MapPin({
   pin,
   selected,
+  tvFocused = false,
   onClick,
   embedded = false,
   draggable = false,
@@ -21,7 +22,7 @@ export default function MapPin({
   return (
     <button
       type="button"
-      className={`map-pin group ${embedded ? 'map-pin-embedded' : ''} ${selected ? 'map-pin-selected' : ''} ${draggable ? 'map-pin-grabbable' : ''} ${isCopper ? 'map-pin-deep' : 'map-pin-red'}`}
+      className={`map-pin group ${embedded ? 'map-pin-embedded' : ''} ${selected ? 'map-pin-selected' : ''} ${tvFocused ? 'map-pin-tv-focused' : ''} ${draggable ? 'map-pin-grabbable' : ''} ${isCopper ? 'map-pin-deep' : 'map-pin-red'}`}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -29,6 +30,7 @@ export default function MapPin({
       aria-label={`${pin.name} pin`}
     >
       <span className="map-pin-dot" />
+      {tvFocused && <span className="map-pin-tv-label">{pin.name}</span>}
     </button>
   );
 }

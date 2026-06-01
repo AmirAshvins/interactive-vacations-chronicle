@@ -1,4 +1,6 @@
 import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
+import { useTvFocus } from '../context/TvFocusContext';
+import { useEnvironmentContext } from '../context/EnvironmentContext';
 import type { Trip } from '../types/travelogue';
 import { getCountryName, formatTripDuration } from '../utils/countryUtils';
 import TripImages from './TripImages';
@@ -16,6 +18,7 @@ interface TripDetailCardProps {
   position: { x: number; y: number };
   isDarkPhase: boolean;
   isOverlayVisible: boolean;
+  isPrimaryOpenCard?: boolean;
   onClose: () => void;
   onFocus: () => void;
   onMoveOffset: (offsetX: number, offsetY: number) => void;
@@ -28,11 +31,16 @@ export default function TripDetailCard({
   position,
   isDarkPhase,
   isOverlayVisible,
+  isPrimaryOpenCard = true,
   onClose,
   onFocus,
   onMoveOffset,
   onOpenChronicle,
 }: TripDetailCardProps) {
+  const tv = useTvFocus();
+  const { mobileLayout } = useEnvironmentContext();
+  const isTvActive = tv.enabled && tv.isTripCardFocused && isPrimaryOpenCard;
+  const cardHiddenClass = mobileLayout ? 'tv-hud-hidden-bottom' : 'tv-hud-hidden-right';
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -46,6 +54,7 @@ export default function TripDetailCard({
 
   const handleHeaderPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (tv.enabled) return;
       if (e.button !== 0) return;
       if ((e.target as HTMLElement).closest('.trip-detail-card-close')) return;
       e.stopPropagation();
@@ -59,7 +68,7 @@ export default function TripDetailCard({
         pointerId: e.pointerId,
       };
     },
-    [layout.offsetX, layout.offsetY, onFocus],
+    [layout.offsetX, layout.offsetY, onFocus, tv.enabled],
   );
 
   const handleHeaderPointerMove = useCallback(
@@ -94,15 +103,19 @@ export default function TripDetailCard({
     <div
       className={`trip-detail-card tv-hud-element fixed flex w-[min(320px,26vw)] flex-col gap-4 rounded-lg border p-0 shadow-2xl ${
         isDarkPhase ? 'trip-detail-dark' : 'trip-detail-light'
-      } ${isOverlayVisible ? 'opacity-100' : 'pointer-events-none opacity-0 tv-hud-hidden-right'}`}
-      style={{ left: position.x, top: position.y, zIndex: layout.z }}
+      } ${isOverlayVisible ? 'opacity-100' : `pointer-events-none opacity-0 ${cardHiddenClass}`} ${isTvActive ? 'tv-focused-card' : ''}`}
+      style={
+        mobileLayout
+          ? { zIndex: layout.z }
+          : { left: position.x, top: position.y, zIndex: layout.z }
+      }
       onPointerDown={onFocus}
     >
       <div
         ref={headerRef}
-        className={`trip-detail-card-header flex cursor-grab items-start justify-between gap-3 rounded-t-lg border-b px-5 py-4 active:cursor-grabbing ${
-          isDarkPhase ? 'border-white/8 bg-white/[0.02]' : 'border-black/6 bg-black/[0.02]'
-        }`}
+        className={`trip-detail-card-header flex items-start justify-between gap-3 rounded-t-lg border-b px-5 py-4 ${
+          tv.enabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+        } ${isDarkPhase ? 'border-white/8 bg-white/[0.02]' : 'border-black/6 bg-black/[0.02]'}`}
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
@@ -110,8 +123,8 @@ export default function TripDetailCard({
       >
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-1.5 text-[8px] font-semibold uppercase tracking-widest opacity-40">
-            <GripHorizontal size={12} />
-            <span>Drag to move</span>
+            {!tv.enabled && <GripHorizontal size={12} />}
+            <span>{tv.enabled ? '↑↓ actions · ← back' : 'Drag to move'}</span>
           </div>
           <h3 className="truncate text-lg font-medium" style={{ fontFamily: 'var(--font-serif)' }}>
             {trip.name}
@@ -130,7 +143,9 @@ export default function TripDetailCard({
             e.stopPropagation();
             onClose();
           }}
-          className="trip-detail-card-close shrink-0 rounded-full p-1.5 opacity-60 hover:opacity-100"
+          className={`trip-detail-card-close shrink-0 rounded-full p-1.5 opacity-60 hover:opacity-100 ${
+            isTvActive && tv.tripCardTarget === 'close' ? 'tv-focused' : ''
+          }`}
           aria-label={`Close ${trip.name}`}
         >
           <X size={14} />
@@ -147,7 +162,7 @@ export default function TripDetailCard({
           </div>
           <p className="flex items-center gap-1.5 text-[8px] uppercase tracking-widest text-[#a58452]/80">
             <MapPin size={10} />
-            Drag the pin on the map to reposition
+            {tv.enabled ? 'Use map focus to reposition' : 'Drag the pin on the map to reposition'}
           </p>
         </div>
 
@@ -171,7 +186,11 @@ export default function TripDetailCard({
         <button
           type="button"
           onClick={onOpenChronicle}
-          className="w-full rounded border border-[#a58452]/20 py-2 text-[9px] font-medium uppercase tracking-widest text-[#a58452] transition-all hover:border-[#a58452]/50 hover:bg-[#a58452]/5"
+          className={`w-full rounded border py-2 text-[9px] font-medium uppercase tracking-widest text-[#a58452] transition-all ${
+            isTvActive && tv.tripCardTarget === 'chronicle'
+              ? 'tv-focused border-[#a58452] bg-[#a58452]/15'
+              : 'border-[#a58452]/20 hover:border-[#a58452]/50 hover:bg-[#a58452]/5'
+          }`}
         >
           Open chronicle
         </button>

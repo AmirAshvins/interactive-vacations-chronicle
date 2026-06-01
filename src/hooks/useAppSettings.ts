@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MapDisplaySettings } from '../types/travelogue';
+import type { EnvironmentOverride } from '../utils/detectEnvironment';
 
 const APP_SETTINGS_KEY = 'bedrood-azizi-app-settings';
 
@@ -7,14 +8,22 @@ export type MaterialMode = 'oak' | 'cork' | 'walnut' | 'auto';
 
 export interface AppSettings {
   materialMode: MaterialMode;
-  isTvMode: boolean;
+  /** Auto-hide HUD after idle (living-room display) */
+  isTvScreensaver: boolean;
+  /** D-pad / remote focus navigation — `auto` follows detected TV platform */
+  tvInteraction: EnvironmentOverride;
+  /** Bottom-sheet layout, compact chrome — `auto` follows detected mobile */
+  mobileLayout: EnvironmentOverride;
   homeCityKey: string;
   map: MapDisplaySettings;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   materialMode: 'auto',
-  isTvMode: true,
+  isTvScreensaver: true,
+  /** `on` while building TV focus nav — switch to `auto` when shipping */
+  tvInteraction: 'on',
+  mobileLayout: 'auto',
   homeCityKey: 'toronto',
   map: {
     showFlightPaths: true,
@@ -22,16 +31,25 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
 };
 
+function migrateSettings(parsed: Partial<AppSettings> & { isTvMode?: boolean }): AppSettings {
+  const isTvScreensaver =
+    parsed.isTvScreensaver ?? parsed.isTvMode ?? DEFAULT_SETTINGS.isTvScreensaver;
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    isTvScreensaver,
+    tvInteraction: parsed.tvInteraction ?? DEFAULT_SETTINGS.tvInteraction,
+    mobileLayout: parsed.mobileLayout ?? DEFAULT_SETTINGS.mobileLayout,
+    map: { ...DEFAULT_SETTINGS.map, ...parsed.map },
+  };
+}
+
 function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(APP_SETTINGS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AppSettings>;
-      return {
-        ...DEFAULT_SETTINGS,
-        ...parsed,
-        map: { ...DEFAULT_SETTINGS.map, ...parsed.map },
-      };
+      return migrateSettings(JSON.parse(raw) as Partial<AppSettings> & { isTvMode?: boolean });
     }
   } catch {
     /* defaults */
@@ -51,8 +69,16 @@ export function useAppSettings() {
     setSettings((s) => ({ ...s, materialMode }));
   }, []);
 
-  const setIsTvMode = useCallback((isTvMode: boolean) => {
-    setSettings((s) => ({ ...s, isTvMode }));
+  const setTvScreensaver = useCallback((isTvScreensaver: boolean) => {
+    setSettings((s) => ({ ...s, isTvScreensaver }));
+  }, []);
+
+  const setTvInteraction = useCallback((tvInteraction: EnvironmentOverride) => {
+    setSettings((s) => ({ ...s, tvInteraction }));
+  }, []);
+
+  const setMobileLayout = useCallback((mobileLayout: EnvironmentOverride) => {
+    setSettings((s) => ({ ...s, mobileLayout }));
   }, []);
 
   const setMapSettings = useCallback((map: MapDisplaySettings | ((prev: MapDisplaySettings) => MapDisplaySettings)) => {
@@ -68,12 +94,20 @@ export function useAppSettings() {
 
   return {
     materialMode: settings.materialMode,
-    isTvMode: settings.isTvMode,
+    isTvScreensaver: settings.isTvScreensaver,
+    tvInteraction: settings.tvInteraction,
+    mobileLayout: settings.mobileLayout,
     homeCityKey: settings.homeCityKey,
     mapSettings: settings.map,
     setMaterialMode,
-    setIsTvMode,
+    setTvScreensaver,
+    setTvInteraction,
+    setMobileLayout,
     setHomeCityKey,
     setMapSettings,
+    /** @deprecated use isTvScreensaver */
+    isTvMode: settings.isTvScreensaver,
+    /** @deprecated use setTvScreensaver */
+    setIsTvMode: setTvScreensaver,
   };
 }

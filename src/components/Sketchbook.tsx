@@ -69,83 +69,87 @@ export default function Sketchbook({
     setDialogOpen(true);
   };
 
-  const body = (
-    <>
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 p-5 pb-0">
-          <div className="flex flex-col gap-2">
-            <div className={sectionLabelClass}>
-              <Award size={9} className="text-[#a58452]" />
-              <span>Journey Diagnostics</span>
-            </div>
-            <div className={`mt-1 flex items-center justify-between border-y py-4 font-sans ${dividerClass}`}>
-              <div className="flex flex-col items-start">
-                <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Countries</span>
-                <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
-                  {uniqueCountries}
-                </span>
-              </div>
-              <div className={`h-6 w-px ${isDarkPhase ? 'bg-white/5' : 'bg-black/5'}`} />
-              <div className="flex flex-col items-start">
-                <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Journeys</span>
-                <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
-                  {trips.length}
-                </span>
-              </div>
-              <div className={`h-6 w-px ${isDarkPhase ? 'bg-white/5' : 'bg-black/5'}`} />
-              <div className="flex flex-col items-start">
-                <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Flight arcs</span>
-                <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
-                  {flights.length}
-                </span>
-              </div>
-            </div>
-            {homeOrigin && (
-              <p className="text-[9px] font-mono uppercase tracking-widest text-[#a58452]/80">
-                Origin: {homeOrigin.name}
-              </p>
-            )}
+  const chronicleBody = (
+    <div
+      className={
+        embedded
+          ? 'sketchbook-embedded flex h-full min-h-0 flex-col overflow-hidden'
+          : 'flex h-full min-h-0 flex-col'
+      }
+    >
+      <div className="shrink-0 p-5 pb-0">
+        <div className="flex flex-col gap-2">
+          <div className={sectionLabelClass}>
+            <Award size={9} className="text-[#a58452]" />
+            <span>Journey Diagnostics</span>
           </div>
-
-          <div className="mt-5 flex items-center justify-between">
-            <div className={sectionLabelClass}>
-              <Compass size={9} className="text-[#a58452]" />
-              <span>Chronicle Logs</span>
+          <div className={`mt-1 flex items-center justify-between border-y py-4 font-sans ${dividerClass}`}>
+            <div className="flex flex-col items-start">
+              <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Countries</span>
+              <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
+                {uniqueCountries}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={openNewTrip}
-              className="flex items-center gap-1.5 rounded-full bg-[#a58452] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-white hover:bg-[#b59563]"
-            >
-              <Plus size={11} />
-              Add
-            </button>
+            <div className={`h-6 w-px ${isDarkPhase ? 'bg-white/5' : 'bg-black/5'}`} />
+            <div className="flex flex-col items-start">
+              <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Journeys</span>
+              <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
+                {trips.length}
+              </span>
+            </div>
+            <div className={`h-6 w-px ${isDarkPhase ? 'bg-white/5' : 'bg-black/5'}`} />
+            <div className="flex flex-col items-start">
+              <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50">Flight arcs</span>
+              <span className={`mt-1 text-xl font-extralight ${isDarkPhase ? 'text-neutral-200' : 'text-[#2c2c2a]'}`}>
+                {flights.length}
+              </span>
+            </div>
           </div>
+          {homeOrigin && (
+            <p className="text-[9px] font-mono uppercase tracking-widest text-[#a58452]/80">
+              Origin: {homeOrigin.name}
+            </p>
+          )}
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-5 pt-3">
-          <VirtualChronicleList
-            trips={trips}
-            isDarkPhase={isDarkPhase}
-            flightTripIds={flightTripIds}
-            homeOrigin={homeOrigin}
-            onTripSelect={onTripSelect}
-            onEditTrip={openEditTrip}
-            emptyState={
-              <div className={`rounded-2xl border border-dashed py-8 text-center text-[10px] uppercase tracking-widest opacity-50 ${cardClass}`}>
-                No journeys yet — add your first trip
-              </div>
-            }
-          />
+        <div className="mt-5 flex items-center justify-between">
+          <div className={sectionLabelClass}>
+            <Compass size={9} className="text-[#a58452]" />
+            <span>Chronicle Logs</span>
+          </div>
+          <button
+            type="button"
+            onClick={openNewTrip}
+            className="flex items-center gap-1.5 rounded-full bg-[#a58452] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-white hover:bg-[#b59563]"
+          >
+            <Plus size={11} />
+            Add
+          </button>
         </div>
+      </div>
 
-        <div className={`shrink-0 border-t p-5 pt-4 ${dividerClass}`}>
-          <ChronicleTransfer
-            trips={trips}
-            isDarkPhase={isDarkPhase}
-            onImport={onImportTrips}
-          />
-        </div>
+      <div className="sketchbook-chronicle-region flex min-h-0 flex-1 flex-col overflow-hidden pl-5 pr-2 pt-3 pb-1">
+        <VirtualChronicleList
+          trips={trips}
+          isDarkPhase={isDarkPhase}
+          flightTripIds={flightTripIds}
+          homeOrigin={homeOrigin}
+          onTripSelect={onTripSelect}
+          onEditTrip={openEditTrip}
+          emptyState={
+            <div className={`rounded-2xl border border-dashed py-8 text-center text-[10px] uppercase tracking-widest opacity-50 ${cardClass}`}>
+              No journeys yet — add your first trip
+            </div>
+          }
+        />
+      </div>
+
+      <div className={`sketchbook-archive shrink-0 border-t p-5 pt-4 ${dividerClass}`}>
+        <ChronicleTransfer
+          trips={trips}
+          isDarkPhase={isDarkPhase}
+          onImport={onImportTrips}
+        />
       </div>
 
       <TripDialog
@@ -157,10 +161,10 @@ export default function Sketchbook({
         onDelete={editingTrip ? onRemoveTrip : undefined}
         onClose={() => setDialogOpen(false)}
       />
-    </>
+    </div>
   );
 
-  if (embedded) return body;
+  if (embedded) return chronicleBody;
 
   return (
     <div
@@ -168,7 +172,7 @@ export default function Sketchbook({
         isOpen && isOverlayVisible ? 'opacity-100 translate-x-0' : 'tv-hud-hidden-left pointer-events-none'
       } ${isDarkPhase ? 'border-white/5 bg-[#121214]/88 text-neutral-200' : 'border-black/6 bg-[#faf9f6]/92'}`}
     >
-      {body}
+      {chronicleBody}
       {onClose && (
         <button type="button" onClick={onClose} className="sr-only">
           Close

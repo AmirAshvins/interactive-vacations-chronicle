@@ -1,0 +1,273 @@
+/* ==========================================================================
+   Platform environment layers (set on <html> by useEnvironment)
+   - env-tv-interaction: D-pad / remote focus navigation (Phase 1+)
+   - env-mobile-layout: bottom sheets, compact chrome
+   - env-desktop-layout: floating panels, hover affordances
+   ========================================================================== */
+
+:root {
+  --env-focus-ring: 0 0 0 3px rgba(165, 132, 82, 0.55);
+  --env-touch-min: 44px;
+  --env-tv-touch-min: 48px;
+}
+
+/* --- TV interaction (remote / keyboard focus) --- */
+
+.env-tv-interaction .control-dock .dock-btn {
+  min-width: var(--env-tv-touch-min);
+  min-height: var(--env-tv-touch-min);
+}
+
+.env-tv-interaction .map-pin:focus-visible .map-pin-dot,
+.env-tv-interaction .dock-btn:focus-visible,
+.env-tv-interaction .right-panel-tab:focus-visible {
+  box-shadow: var(--env-focus-ring);
+  outline: none;
+}
+
+.tv-focused {
+  box-shadow: var(--env-focus-ring);
+  outline: none;
+}
+
+.env-tv-interaction .map-pin-tv-focused .map-pin-dot {
+  transform: scale(1.45);
+  box-shadow:
+    0 0 0 4px rgba(165, 132, 82, 0.45),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.map-pin-tv-label {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2c2c2a;
+  background: rgba(250, 249, 246, 0.95);
+  border: 1px solid rgba(165, 132, 82, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.chronicle-log-tv-focused {
+  border-color: rgba(165, 132, 82, 0.45) !important;
+  background: rgba(165, 132, 82, 0.08) !important;
+}
+
+.tv-focused-card {
+  box-shadow:
+    var(--env-focus-ring),
+    0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.env-debug-bar {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Chronicle edit control is hover-only on desktop — always show under TV interaction */
+.env-tv-interaction .chronicle-log-edit {
+  opacity: 1;
+}
+
+/* --- Mobile layout --- */
+
+.env-mobile-layout .control-dock {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.env-mobile-layout .control-dock.control-dock--sheet-open {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(28px);
+}
+
+.env-mobile-layout .right-panel.right-panel--open,
+.env-mobile-layout .right-panel.right-panel--dragging {
+  transition:
+    opacity var(--hud-transition),
+    visibility var(--hud-transition),
+    transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.env-mobile-layout .right-panel.right-panel--dragging {
+  transition: none;
+}
+
+.env-mobile-layout .right-panel-drag-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.35rem 0 0.15rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.env-mobile-layout .right-panel-drag-zone:active {
+  cursor: grabbing;
+}
+
+.env-mobile-layout .right-panel .right-panel-sheet-handle {
+  display: block;
+  width: 2.75rem;
+  height: 0.3rem;
+  margin: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.solar-dark-phase .right-panel-sheet-handle {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.env-mobile-layout .right-panel {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 0;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: min(72dvh, 640px);
+  max-height: min(72dvh, 640px);
+  border-radius: 1.25rem 1.25rem 0 0;
+  border-bottom: none;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.env-mobile-layout .right-panel.right-panel--open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.env-mobile-layout .right-panel.tv-hud-hidden-bottom {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(calc(100% + 32px));
+  pointer-events: none;
+}
+
+.right-panel-sheet-handle {
+  display: none;
+  width: 2.5rem;
+  height: 0.25rem;
+  margin: 0.5rem auto 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.env-mobile-layout .sketchbook-embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.env-mobile-layout .settings-embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.env-mobile-layout .settings-embedded-scroll,
+.env-mobile-layout .sketchbook-chronicle-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.env-mobile-layout .trip-detail-card {
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 0;
+  width: 100% !important;
+  max-width: none !important;
+  border-radius: 1rem 1rem 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.env-mobile-layout .trip-detail-card.tv-hud-hidden-right {
+  transform: translateY(calc(100% + 24px));
+}
+
+.env-mobile-layout .trip-detail-card:not(.tv-hud-hidden-right) {
+  transform: translateY(0);
+}
+
+.env-mobile-layout .map-stage {
+  inset: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Full-viewport modal layer (portaled trip dialog) */
+.trip-dialog-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .trip-dialog-portal {
+    justify-content: center;
+    padding: 1rem;
+  }
+}
+
+.trip-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.trip-dialog-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  max-height: min(92dvh, 720px);
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.25rem 1.25rem 0 0;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 640px) {
+  .trip-dialog-panel {
+    max-width: 32rem;
+    margin: 0 auto;
+    border-radius: 1rem;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* --- Desktop layout refinements --- */
+
+.env-desktop-layout .control-dock {
+  right: clamp(20px, 3vw, 32px);
+}

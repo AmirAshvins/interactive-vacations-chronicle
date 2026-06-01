@@ -12,6 +12,7 @@ import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
 import { latLngToScreen } from '../utils/tripCardPosition';
 import MapPin from './MapPin';
 import FlightArc, { MAX_ANIMATED_FLIGHTS } from './FlightArc';
+import { useTvFocus } from '../context/TvFocusContext';
 
 export type { Trip, FlightRoute };
 
@@ -27,6 +28,7 @@ interface WorldMapProps {
   onPinClick: (trip: Trip) => void;
   onTripLocationChange?: (tripId: string, lat: number, lng: number) => void;
   onTripCardAnchorsChange?: (anchors: Record<string, { x: number; y: number }>) => void;
+  onPinScreenPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
   onCountriesLoaded?: (codes: string[]) => void;
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   isOverlayVisible?: boolean;
@@ -66,6 +68,7 @@ export default function WorldMap({
   onPinClick,
   onTripLocationChange,
   onTripCardAnchorsChange,
+  onPinScreenPositionsChange,
   onCountriesLoaded,
   materialMode,
   isOverlayVisible = true,
@@ -98,6 +101,9 @@ export default function WorldMap({
   tripsRef.current = trips;
   pinDragRef.current = pinDrag;
   onTripCardAnchorsChangeRef.current = onTripCardAnchorsChange;
+  const onPinScreenPositionsChangeRef = useRef(onPinScreenPositionsChange);
+  onPinScreenPositionsChangeRef.current = onPinScreenPositionsChange;
+  const tvFocus = useTvFocus();
   const [flightsReady, setFlightsReady] = useState(false);
   const visitedSet = new Set(visitedCountryCodes.map(normalizeCountryCode));
   const openTripSet = new Set(openTripIds);
@@ -420,7 +426,41 @@ export default function WorldMap({
     return () => cancelAnimationFrame(frame);
   }, [openTripIds.length, updateTripCardAnchors]);
 
+  const reportPinScreenPositions = useCallback(() => {
+    const onChange = onPinScreenPositionsChangeRef.current;
+    if (!onChange) return;
+    const pinLayer = pinLayerRef.current;
+    if (!pinLayer || mapNodes.length === 0) return;
+
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const trip of tripsRef.current) {
+      const isDraggingPin = pinDragRef.current?.tripId === trip.id;
+      const lat = isDraggingPin ? pinDragRef.current!.lat : trip.lat;
+      const lng = isDraggingPin ? pinDragRef.current!.lng : trip.lng;
+      const screen = latLngToScreen(lat, lng, pinLayer);
+      if (screen) positions[trip.id] = screen;
+    }
+    onChange(positions);
+  }, [mapNodes.length]);
+
+  useEffect(() => {
+    if (!onPinScreenPositionsChange) return;
+    if (mapNodes.length === 0) return;
+
+    let frame = 0;
+    const tick = () => {
+      reportPinScreenPositions();
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [onPinScreenPositionsChange, mapNodes.length, reportPinScreenPositions, trips.length]);
+
   const hoveredName = hoveredCountryId ? getCountryName(hoveredCountryId) : null;
+  const focusedPinTrip =
+    tvFocus.enabled && tvFocus.state.zone === 'map' && tvFocus.state.mapPinId
+      ? trips.find((t) => t.id === tvFocus.state.mapPinId)
+      : null;
 
   return (
     <div
@@ -539,8 +579,9 @@ export default function WorldMap({
                         <MapPin
                           pin={trip}
                           selected={isOpen}
+                          tvFocused={tvFocus.isMapPinFocused(trip.id)}
                           embedded
-                          draggable={isDraggable}
+                          draggable={isDraggable && !tvFocus.enabled}
                           onClick={() => onPinClick(trip)}
                         />
                       </foreignObject>
@@ -571,11 +612,11 @@ export default function WorldMap({
 
       <div
         className={`pointer-events-none fixed z-50 rounded-md border border-black/5 bg-white/90 px-3 py-1.5 text-[10px] font-light uppercase tracking-widest text-black/70 shadow-lg backdrop-blur-md transition-opacity duration-200 ${
-          hoveredName && isOverlayVisible ? 'opacity-100' : 'opacity-0'
+          (hoveredName || focusedPinTrip) && isOverlayVisible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ left: tooltipPos.x, top: tooltipPos.y, fontFamily: 'var(--font-sans)' }}
       >
-        {hoveredName}
+        {focusedPinTrip ? focusedPinTrip.name : hoveredName}
       </div>
     </div>
   );
