@@ -97,6 +97,7 @@ function TravelogueApp({
     updateTrip,
     removeTrip,
     importTrips,
+    mergeImportTrips,
     visitedCountryCodes,
   } = travelogue;
 
@@ -397,8 +398,12 @@ function TravelogueApp({
         onAddTrip={(trip, imageChanges) => void addTrip(trip, imageChanges)}
         onUpdateTrip={(trip, imageChanges) => void updateTrip(trip, imageChanges)}
         onRemoveTrip={removeTrip}
-        onImportTrips={(imported) => {
-          void importTrips(imported);
+        onImportTrips={(result) => {
+          if (result.resolution === 'merge') {
+            void mergeImportTrips(result.trips);
+          } else {
+            void importTrips(result.trips);
+          }
           setOpenTripCards({});
           resetIdleTimer();
         }}

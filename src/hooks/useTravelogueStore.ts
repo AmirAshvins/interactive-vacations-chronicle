@@ -20,7 +20,9 @@ export function useTravelogueStore(initial: TravelogueData) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [ready, setReady] = useState(false);
   const initialRef = useRef(initial);
+  const tripsRef = useRef<Trip[]>([]);
   initialRef.current = initial;
+  tripsRef.current = trips;
 
   useEffect(() => {
     let cancelled = false;
@@ -83,23 +85,40 @@ export function useTravelogueStore(initial: TravelogueData) {
     [ready],
   );
 
+  const normalizeImported = useCallback(async (imported: ImportTrip[]) => {
+    const normalized: Trip[] = [];
+    for (const entry of imported) {
+      const { importImages, ...tripFields } = entry;
+      let imageIds: string[] = [];
+      if (importImages?.length) {
+        imageIds = await saveImagesForTrip(entry.id, importImages);
+      }
+      normalized.push({ ...tripFields, imageIds });
+    }
+    return normalized;
+  }, []);
+
   const importTrips = useCallback(
     async (imported: ImportTrip[]) => {
-      const normalized: Trip[] = [];
-
-      for (const entry of imported) {
-        const { importImages, ...tripFields } = entry;
-        let imageIds: string[] = [];
-        if (importImages?.length) {
-          imageIds = await saveImagesForTrip(entry.id, importImages);
-        }
-        normalized.push({ ...tripFields, imageIds });
-      }
-
+      const normalized = await normalizeImported(imported);
       setTrips(normalized);
       if (ready) await replaceAllTrips(normalized);
     },
-    [ready],
+    [normalizeImported, ready],
+  );
+
+  const mergeImportTrips = useCallback(
+    async (imported: ImportTrip[]) => {
+      const prev = tripsRef.current;
+      const existingIds = new Set(prev.map((t) => t.id));
+      const toAdd = imported.filter((entry) => !existingIds.has(entry.id));
+      const normalizedNew = await normalizeImported(toAdd);
+      const merged = [...prev, ...normalizedNew];
+      setTrips(merged);
+      if (ready) await replaceAllTrips(merged);
+      return { added: normalizedNew.length, kept: imported.length - toAdd.length };
+    },
+    [normalizeImported, ready],
   );
 
   const visitedCountryCodes = useCallback(
@@ -114,6 +133,7 @@ export function useTravelogueStore(initial: TravelogueData) {
     updateTrip,
     removeTrip,
     importTrips,
+    mergeImportTrips,
     visitedCountryCodes,
   };
 }

@@ -16,7 +16,7 @@ export const CHRONICLE_TEMPLATES: ChronicleTemplate[] = [
     code: 'Bedrood Azizi',
     slug: 'bedrood-azizi',
     title: 'Bedrood Azizi Family Chronicle',
-    description: 'Tehran, Toronto & Vancouver — three chapters of the family journey.',
+    description: 'World travels from Toronto — Europe, Americas, Asia, and home again.',
     export: bedroodAziziTemplate,
   },
 ];

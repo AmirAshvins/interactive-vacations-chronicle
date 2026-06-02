@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Trip, FlightRoute } from '../types/travelogue';
 import type { HomeOrigin } from '../utils/flightRoutes';
 import type { TripImageChanges } from '../hooks/useTravelogueStore';
-import type { ImportTrip } from '../utils/chronicleTransfer';
+import type { ChronicleImportResult } from './ChronicleImportDialog';
 import TripDialog, { sortCountryOptions } from './TripDialog';
 import ChronicleTransfer from './ChronicleTransfer';
 import VirtualChronicleList from './VirtualChronicleList';
@@ -21,7 +21,7 @@ interface SketchbookProps {
   onAddTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onUpdateTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onRemoveTrip: (id: string) => void;
-  onImportTrips: (trips: ImportTrip[]) => void;
+  onImportTrips: (result: ChronicleImportResult) => void;
   isOverlayVisible?: boolean;
 }
 

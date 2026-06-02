@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { useEnvironmentContext } from '../context/EnvironmentContext';
 import { useTvFocus } from '../context/TvFocusContext';
-import ChronicleImportDialog from './ChronicleImportDialog';
-import { downloadChronicleExport, type ImportTrip } from '../utils/chronicleTransfer';
+import ChronicleImportDialog, {
+  type ChronicleImportResult,
+} from './ChronicleImportDialog';
+import { downloadChronicleExport } from '../utils/chronicleTransfer';
 import type { Trip } from '../types/travelogue';
 
 interface ChronicleTransferProps {
   trips: Trip[];
   isDarkPhase?: boolean;
-  onImport: (trips: ImportTrip[]) => void;
+  onImport: (result: ChronicleImportResult) => void;
 }
 
 export default function ChronicleTransfer({
@@ -50,12 +52,16 @@ export default function ChronicleTransfer({
   }, []);
 
   const handleImported = useCallback(
-    (imported: ImportTrip[], label: string) => {
-      onImport(imported);
-      setStatus({
-        type: 'success',
-        message: `Imported ${imported.length} journal${imported.length === 1 ? '' : 's'} from ${label}.`,
-      });
+    (result: ChronicleImportResult) => {
+      onImport(result);
+      const { trips, label, resolution, addedCount, conflictCount } = result;
+      const message =
+        resolution === 'merge' && addedCount !== undefined
+          ? `Merged ${addedCount} new journal${addedCount === 1 ? '' : 's'} from ${label}${
+              conflictCount ? `; kept ${conflictCount} existing.` : '.'
+            }`
+          : `Imported ${trips.length} journal${trips.length === 1 ? '' : 's'} from ${label}.`;
+      setStatus({ type: 'success', message });
     },
     [onImport],
   );
@@ -139,7 +145,7 @@ export default function ChronicleTransfer({
       <ChronicleImportDialog
         open={importOpen}
         isDarkPhase={isDarkPhase}
-        hasExistingTrips={trips.length > 0}
+        existingTrips={trips}
         onClose={() => setImportOpen(false)}
         onImported={handleImported}
       />

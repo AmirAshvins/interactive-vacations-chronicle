@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-const PLANE_PATH = 'M 0 0 L 11 -0.8 L 13 0 L 11 0.8 Z M 2.5 -3.2 L 7 -0.8 L 2.5 -0.8 Z M 2.5 0.8 L 7 0.8 L 2.5 3.2 Z';
+const PLANE_PATH = 'M 0 0 L 8 -0.55 L 9.5 0 L 8 0.55 Z M 1.8 -2.2 L 5 -0.55 L 1.8 -0.55 Z M 1.8 0.55 L 5 0.55 L 1.8 2.2 Z';
 
 /** Above this count, arcs stay static — avoids hundreds of concurrent animations */
 export const MAX_ANIMATED_FLIGHTS = 24;

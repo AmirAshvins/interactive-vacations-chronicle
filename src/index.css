@@ -24,7 +24,7 @@
   --dock-bg: rgba(255, 255, 255, 0.92);
   --dock-border: rgba(60, 48, 32, 0.1);
   --flight-stroke: #a58452;
-  --flight-stroke-width: 1.15;
+  --flight-stroke-width: 0.6;
   --flight-plane-fill: #b8956a;
   --flight-plane-stroke: rgba(255, 255, 255, 0.75);
   --landmass-stroke: rgba(92, 72, 48, 0.14);
@@ -278,6 +278,7 @@ html.solar-dark-phase body {
 
 .flight-arc-group {
   contain: layout style;
+  pointer-events: none;
 }
 
 .flight-plane-motion {
@@ -340,21 +341,31 @@ html.solar-dark-phase body {
 .flight-arc {
   fill: none !important;
   stroke: var(--flight-stroke);
-  stroke-dasharray: 6 5;
+  stroke-dasharray: 3 7;
   stroke-width: var(--flight-stroke-width);
   stroke-linecap: round;
-  opacity: 0.78;
+  opacity: 0.42;
   vector-effect: non-scaling-stroke;
   transition:
     stroke var(--solar-transition),
     opacity var(--solar-transition);
 }
 
+/* Many home-origin routes stacked — stay light */
+.flight-layer--dense .flight-arc {
+  stroke-width: calc(var(--flight-stroke-width) * 0.85);
+  stroke-dasharray: 2 8;
+  opacity: 0.28;
+}
+
 .flight-plane {
   fill: var(--flight-plane-fill);
   stroke: var(--flight-plane-stroke);
-  stroke-width: 0.35;
-  filter: drop-shadow(0 0 2px rgba(165, 132, 82, 0.35));
+  stroke-width: 0.25;
+  filter: drop-shadow(0 0 1px rgba(165, 132, 82, 0.25));
+  transform: scale(0.62);
+  transform-box: fill-box;
+  transform-origin: center;
   transition:
     fill var(--solar-transition),
     stroke var(--solar-transition),
@@ -362,7 +373,11 @@ html.solar-dark-phase body {
 }
 
 .solar-dark-phase .flight-arc {
-  opacity: 0.85;
+  opacity: 0.5;
+}
+
+.solar-dark-phase .flight-layer--dense .flight-arc {
+  opacity: 0.32;
 }
 
 .solar-dark-phase .flight-plane {

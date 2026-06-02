@@ -5,10 +5,11 @@ import type { Trip, FlightRoute } from '../types/travelogue';
 import {
   projectCoordinates,
   unprojectCoordinates,
-  getGreatCirclePath,
+  getFlightPath,
   MAP_VIEWBOX_STRING,
+  type ProjectOptions,
 } from '../utils/flightArc';
-import { computeFlightLaneOffset, resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
+import { HOME_ORIGIN_ID, resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
 import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
 import { latLngToScreen } from '../utils/tripCardPosition';
 import MapPin from './MapPin';
@@ -98,9 +99,15 @@ export default function WorldMap({
   const [pinDrag, setPinDrag] = useState<{ tripId: string; lat: number; lng: number } | null>(
     null,
   );
-  const pinDragPrepRef = useRef<{ tripId: string; startX: number; startY: number; lat: number; lng: number } | null>(
-    null,
-  );
+  const pinDragPrepRef = useRef<{
+    tripId: string;
+    startX: number;
+    startY: number;
+    lat: number;
+    lng: number;
+    countryCode: string;
+    cityKey?: string;
+  } | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const pinLayerRef = useRef<SVGSVGElement>(null);
@@ -179,6 +186,15 @@ export default function WorldMap({
       .catch((err) => console.error('[WorldMap] Failed to load map:', err));
   }, [onCountriesLoaded]);
 
+  const projectOpts = useCallback(
+    (trip: { countryCode: string; cityKey?: string; id: string }): ProjectOptions => ({
+      countryCode: trip.countryCode,
+      cityKey: trip.cityKey,
+      pinId: trip.id,
+    }),
+    [],
+  );
+
   const flightPaths = useMemo(() => {
     if (!showFlightPaths) return [];
 
@@ -188,10 +204,18 @@ export default function WorldMap({
         if (!endpoints) return null;
 
         const { fromLat, fromLng, toLat, toLng } = endpoints;
-        const laneOffset = computeFlightLaneOffset(flight, flights, idx);
-        const pathD = getGreatCirclePath(fromLat, fromLng, toLat, toLng, laneOffset);
-        const start = projectCoordinates(fromLat, fromLng);
-        const end = projectCoordinates(toLat, toLng);
+        const toTrip = trips.find((t) => t.id === flight.toTripId);
+        const fromTrip =
+          flight.fromTripId === HOME_ORIGIN_ID
+            ? null
+            : trips.find((t) => t.id === flight.fromTripId);
+        const fromOptions: ProjectOptions = fromTrip
+          ? projectOpts(fromTrip)
+          : { countryCode: 'ca', cityKey: homeOrigin?.cityKey, pinId: 'home' };
+        const toOptions = toTrip ? projectOpts(toTrip) : undefined;
+        const pathD = getFlightPath(fromLat, fromLng, toLat, toLng, fromOptions, toOptions);
+        const start = projectCoordinates(fromLat, fromLng, fromOptions);
+        const end = projectCoordinates(toLat, toLng, toOptions);
         const duration = Math.max(
           6,
           Math.min(
@@ -203,14 +227,17 @@ export default function WorldMap({
         return { id: flight.id, pathD, duration, idx };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-  }, [showFlightPaths, flights, trips, homeOrigin]);
+  }, [showFlightPaths, flights, trips, homeOrigin, projectOpts]);
+
+  const denseFlightLayer = flightPaths.length > 36;
 
   const flightGeometryKey = useMemo(
     () => flightPaths.map((entry) => `${entry.id}:${entry.pathD}:${entry.duration}`).join(';'),
     [flightPaths],
   );
 
-  const animatePlanes = flightPaths.length <= FLIGHT_PLANE_CAP;
+  const animatePlanes =
+    !denseFlightLayer && flightPaths.length <= FLIGHT_PLANE_CAP;
 
   // Defer flight layer until map paths are laid out.
   useEffect(() => {
@@ -250,7 +277,7 @@ export default function WorldMap({
     return parts.join(' ');
   };
 
-  const clientToLatLng = useCallback((clientX: number, clientY: number) => {
+  const clientToLatLng = useCallback((clientX: number, clientY: number, options?: ProjectOptions) => {
     const svg = pinLayerRef.current;
     if (!svg) return null;
     const ctm = svg.getScreenCTM();
@@ -259,7 +286,7 @@ export default function WorldMap({
     pt.x = clientX;
     pt.y = clientY;
     const svgPt = pt.matrixTransform(ctm.inverse());
-    return unprojectCoordinates(svgPt.x, svgPt.y);
+    return unprojectCoordinates(svgPt.x, svgPt.y, options);
   }, []);
 
   const handlePinPointerDown = useCallback(
@@ -274,6 +301,8 @@ export default function WorldMap({
         startY: e.clientY,
         lat: trip.lat,
         lng: trip.lng,
+        countryCode: trip.countryCode,
+        cityKey: trip.cityKey,
       };
     },
     [onTripLocationChange, openTripIds],
@@ -293,7 +322,17 @@ export default function WorldMap({
       }
 
       if (!pinDrag && !pinDragPrepRef.current) return;
-      const coords = clientToLatLng(e.clientX, e.clientY);
+      const dragOpts = prep
+        ? { countryCode: prep.countryCode, cityKey: prep.cityKey, pinId: prep.tripId }
+        : pinDrag
+          ? {
+              countryCode:
+                trips.find((t) => t.id === pinDrag.tripId)?.countryCode ?? 'ca',
+              cityKey: trips.find((t) => t.id === pinDrag.tripId)?.cityKey,
+              pinId: pinDrag.tripId,
+            }
+          : undefined;
+      const coords = clientToLatLng(e.clientX, e.clientY, dragOpts);
       if (!coords) return;
       const activeId = pinDrag?.tripId ?? prep?.tripId;
       if (!activeId) return;
@@ -308,11 +347,14 @@ export default function WorldMap({
       pinDragPrepRef.current = null;
 
       if (pinDrag && onTripLocationChange) {
-        const coords = clientToLatLng(e.clientX, e.clientY);
-        if (coords) {
-          const trip = trips.find((t) => t.id === pinDrag.tripId);
+        const trip = trips.find((t) => t.id === pinDrag.tripId);
+        const coords = clientToLatLng(
+          e.clientX,
+          e.clientY,
+          trip ? projectOpts(trip) : undefined,
+        );
+        if (coords && trip) {
           const moved =
-            !trip ||
             Math.abs(trip.lat - coords.lat) > 0.001 ||
             Math.abs(trip.lng - coords.lng) > 0.001;
           if (moved) {
@@ -326,7 +368,7 @@ export default function WorldMap({
         (e.currentTarget as Element).releasePointerCapture(e.pointerId);
       }
     },
-    [clientToLatLng, onTripLocationChange, pinDrag, trips],
+    [clientToLatLng, onTripLocationChange, pinDrag, projectOpts, trips],
   );
 
   const applyMapView = useCallback((nextZoom: number, nextPan: MapPan) => {
@@ -542,7 +584,7 @@ export default function WorldMap({
       const isDraggingPin = pinDrag?.tripId === tripId;
       const lat = isDraggingPin ? pinDrag.lat : trip.lat;
       const lng = isDraggingPin ? pinDrag.lng : trip.lng;
-      const screen = latLngToScreen(lat, lng, pinLayer);
+      const screen = latLngToScreen(lat, lng, pinLayer, projectOpts(trip));
       if (screen) anchors[tripId] = screen;
     }
 
@@ -575,7 +617,7 @@ export default function WorldMap({
       lastAnchorsRef.current = anchors;
       onTripCardAnchorsChange(anchors);
     }
-  }, [mapNodes.length]);
+  }, [mapNodes.length, projectOpts]);
 
   useEffect(() => {
     if (openTripIds.length === 0) {
@@ -603,11 +645,11 @@ export default function WorldMap({
       const isDraggingPin = pinDragRef.current?.tripId === trip.id;
       const lat = isDraggingPin ? pinDragRef.current!.lat : trip.lat;
       const lng = isDraggingPin ? pinDragRef.current!.lng : trip.lng;
-      const screen = latLngToScreen(lat, lng, pinLayer);
+      const screen = latLngToScreen(lat, lng, pinLayer, projectOpts(trip));
       if (screen) positions[trip.id] = screen;
     }
     onChange(positions);
-  }, [mapNodes.length]);
+  }, [mapNodes.length, projectOpts]);
 
   useEffect(() => {
     if (!onPinScreenPositionsChange) return;
@@ -706,7 +748,7 @@ export default function WorldMap({
               {showFlightPaths && flightsReady && (
                 <svg
                   ref={flightLayerRef}
-                  className="flight-layer"
+                  className={`flight-layer${denseFlightLayer ? ' flight-layer--dense' : ''}`}
                   viewBox={MAP_VIEWBOX_STRING}
                   preserveAspectRatio="xMidYMid meet"
                 >
@@ -733,7 +775,7 @@ export default function WorldMap({
                   const isDraggingPin = pinDrag?.tripId === trip.id;
                   const lat = isDraggingPin ? pinDrag.lat : trip.lat;
                   const lng = isDraggingPin ? pinDrag.lng : trip.lng;
-                  const { x, y } = projectCoordinates(lat, lng);
+                  const { x, y } = projectCoordinates(lat, lng, projectOpts(trip));
                   const isOpen = openTripSet.has(trip.id);
                   const isDraggable = isOpen && !!onTripLocationChange;
 
