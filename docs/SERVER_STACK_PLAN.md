@@ -900,12 +900,14 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 5 — Offline sync (1–2 weeks)
 
-- [ ] IndexedDB outbox + sync_meta stores
-- [ ] `pushChanges` + `syncDelta` queries
-- [ ] Online/offline detector + flush on reconnect
-- [ ] Conflict UI (simple: server wins + toast)
+- [x] IndexedDB outbox + sync_meta stores (`ivc-sync` DB)
+- [x] `pushChanges` + `syncDelta` GraphQL
+- [x] Online/offline detector + flush on reconnect
+- [x] Conflict UI (server wins + dismissible toast)
 
 **Exit criteria:** Airplane mode edits sync when back online.
+
+**Verify:** `yarn test:push`; in browser DevTools → Network → Offline, edit a trip, go Online → badge shows `Sync (n)` then clears.
 
 ---
 

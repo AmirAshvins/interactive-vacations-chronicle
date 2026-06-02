@@ -107,3 +107,11 @@ yarn test:image   # with yarn dev:api running
 ```
 
 Set `R2_*` and `STORAGE_PUBLIC_BASE_URL` in `apps/api/.env` for production. Without R2 vars, uploads use `.data/ivc-uploads` automatically.
+
+### Offline sync (Phase 5)
+
+Synced travelogues queue trip edits in IndexedDB when offline and flush via `pushChanges` when back online. The map shows **Offline**, **Sync (n)**, or **Live** in the top-right.
+
+```bash
+yarn test:push   # API pushChanges + syncDelta smoke test
+```

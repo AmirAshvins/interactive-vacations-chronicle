@@ -87,9 +87,27 @@ export const typeDefs = /* GraphQL */ `
     trip: Trip
   }
 
+  type SyncDelta {
+    travelogueVersion: Int!
+    patches: [TripPatch!]!
+  }
+
+  type IdMapping {
+    clientTripId: ID!
+    serverTripId: ID!
+  }
+
+  type PushChangesResult {
+    travelogueVersion: Int!
+    patches: [TripPatch!]!
+    idMappings: [IdMapping!]!
+    conflicts: Int!
+  }
+
   type Query {
     me: User
     travelogue(id: ID!): Travelogue
+    syncDelta(travelogueId: ID!, sinceVersion: Int!): SyncDelta!
   }
 
   type Mutation {
@@ -114,6 +132,8 @@ export const typeDefs = /* GraphQL */ `
     requestImageUpload(tripId: ID!, mimeType: String!, sizeBytes: Int!): ImageUploadRequest!
     attachImage(tripId: ID!, imageId: ID!, clientMutationId: String!): Trip!
     detachImage(tripId: ID!, imageId: ID!, clientMutationId: String!): Trip!
+
+    pushChanges(travelogueId: ID!, changes: [ChangeInput!]!): PushChangesResult!
   }
 
   type Subscription {
@@ -137,5 +157,13 @@ export const typeDefs = /* GraphQL */ `
     startMonth: Int
     endYear: Int
     endMonth: Int
+  }
+
+  input ChangeInput {
+    clientMutationId: String!
+    type: String!
+    tripId: ID
+    baseVersion: Int
+    payload: String
   }
 `;

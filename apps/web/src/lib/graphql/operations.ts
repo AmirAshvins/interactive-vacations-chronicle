@@ -228,6 +228,71 @@ export const DETACH_IMAGE = /* GraphQL */ `
   }
 `;
 
+export const SYNC_DELTA = /* GraphQL */ `
+  query SyncDelta($travelogueId: ID!, $sinceVersion: Int!) {
+    syncDelta(travelogueId: $travelogueId, sinceVersion: $sinceVersion) {
+      travelogueVersion
+      patches {
+        op
+        tripId
+        version
+        trip {
+          id
+          countryCode
+          cityKey
+          name
+          lat
+          lng
+          description
+          material
+          startYear
+          startMonth
+          endYear
+          endMonth
+          version
+          imageUrls
+          updatedAt
+        }
+      }
+    }
+  }
+`;
+
+export const PUSH_CHANGES = /* GraphQL */ `
+  mutation PushChanges($travelogueId: ID!, $changes: [ChangeInput!]!) {
+    pushChanges(travelogueId: $travelogueId, changes: $changes) {
+      travelogueVersion
+      conflicts
+      idMappings {
+        clientTripId
+        serverTripId
+      }
+      patches {
+        op
+        tripId
+        version
+        trip {
+          id
+          countryCode
+          cityKey
+          name
+          lat
+          lng
+          description
+          material
+          startYear
+          startMonth
+          endYear
+          endMonth
+          version
+          imageUrls
+          updatedAt
+        }
+      }
+    }
+  }
+`;
+
 export const TRAVELOGUE_UPDATED = /* GraphQL */ `
   subscription TravelogueUpdated($travelogueId: ID!) {
     travelogueUpdated(travelogueId: $travelogueId) {

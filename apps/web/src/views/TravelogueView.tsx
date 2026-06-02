@@ -111,6 +111,11 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
 
   const syncError = mode === 'synced' ? syncedTravelogue.error : null;
   const syncMeta = mode === 'synced' ? syncedTravelogue.meta : null;
+  const syncOnline = mode === 'synced' ? syncedTravelogue.isOnline : true;
+  const syncPending = mode === 'synced' ? syncedTravelogue.pendingSync : 0;
+  const syncNotice = mode === 'synced' ? syncedTravelogue.syncNotice : null;
+  const dismissSyncNotice =
+    mode === 'synced' ? syncedTravelogue.dismissSyncNotice : () => {};
 
   useEffect(() => {
     if (mode !== 'synced' || !syncMeta) return;
@@ -383,10 +388,22 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
     <div className="relative h-full w-full overflow-hidden">
       {mode === 'synced' ? (
         <div
-          className="absolute right-4 top-4 z-[85] rounded-full border border-emerald-600/30 bg-emerald-50/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-800 backdrop-blur-sm"
-          title="Changes from other devices appear automatically"
+          className={`absolute right-4 top-4 z-[85] rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider backdrop-blur-sm ${
+            !syncOnline
+              ? 'border-amber-600/30 bg-amber-50/90 text-amber-900'
+              : syncPending > 0
+                ? 'border-sky-600/30 bg-sky-50/90 text-sky-900'
+                : 'border-emerald-600/30 bg-emerald-50/90 text-emerald-800'
+          }`}
+          title={
+            !syncOnline
+              ? 'Offline — edits save locally and sync when back online'
+              : syncPending > 0
+                ? `${syncPending} change(s) waiting to sync`
+                : 'Changes from other devices appear automatically'
+          }
         >
-          Live
+          {!syncOnline ? 'Offline' : syncPending > 0 ? `Sync (${syncPending})` : 'Live'}
         </div>
       ) : null}
       {!travelogueReady && (
@@ -397,6 +414,18 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
       {syncError ? (
         <div className="absolute left-4 right-4 top-4 z-[90] rounded-lg border border-red-200 bg-red-50/95 px-4 py-2 text-sm text-red-800">
           {syncError}
+        </div>
+      ) : null}
+      {syncNotice ? (
+        <div className="absolute left-4 right-4 top-14 z-[90] flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/95 px-4 py-2 text-sm text-amber-900">
+          <span>{syncNotice}</span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium uppercase tracking-wide opacity-70 hover:opacity-100"
+            onClick={dismissSyncNotice}
+          >
+            Dismiss
+          </button>
         </div>
       ) : null}
       {mode === 'synced' ? (

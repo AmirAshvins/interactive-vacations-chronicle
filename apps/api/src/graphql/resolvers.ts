@@ -6,6 +6,7 @@ import * as authService from '../services/auth.js';
 import * as travelogueService from '../services/travelogue.js';
 import * as tripService from '../services/trip.js';
 import * as imageService from '../services/images.js';
+import * as syncService from '../services/sync.js';
 import * as syncPublish from '../services/syncPublish.js';
 import { traveloguePubSub } from '../pubsub/travelogue.js';
 import { getMemberRole, requireRole } from '../services/travelogue.js';
@@ -67,6 +68,16 @@ export const resolvers = {
       );
       const tripGql = await mapTripsToGraphql(ctx.db, trips);
       return mapTravelogueToGraphql(travelogue, tripGql);
+    },
+
+    syncDelta: async (
+      _parent: unknown,
+      args: { travelogueId: string; sinceVersion: number },
+      ctx: AppContext,
+    ) => {
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      return syncService.getSyncDelta(ctx.db, args.travelogueId, userId, args.sinceVersion);
     },
   },
 
@@ -241,6 +252,16 @@ export const resolvers = {
       const gqlTrip = await mapTripToGraphql(ctx.db, trip);
       await syncPublish.publishTripUpdated(ctx.db, trip.travelogueId, trip);
       return gqlTrip;
+    },
+
+    pushChanges: async (
+      _parent: unknown,
+      args: { travelogueId: string; changes: syncService.ChangeInput[] },
+      ctx: AppContext,
+    ) => {
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      return syncService.pushChanges(ctx.db, args.travelogueId, userId, args.changes);
     },
   },
 

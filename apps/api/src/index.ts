@@ -33,7 +33,7 @@ const httpServer = createServer((req, res) => {
         JSON.stringify({
           ok: dbOk,
           service: '@ivc/api',
-          phase: '4',
+          phase: '5',
           graphql: true,
           subscriptions: true,
           storage: getStorage().mode,
