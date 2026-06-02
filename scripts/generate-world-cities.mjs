@@ -12,8 +12,8 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const SVG_PATH = join(ROOT, 'public/world-map.svg');
-const OUT_PATH = join(ROOT, 'src/data/worldCities.ts');
+const SVG_PATH = join(ROOT, 'apps/web/public/world-map.svg');
+const OUT_PATH = join(ROOT, 'apps/web/src/data/worldCities.ts');
 const GEONAMES_ZIP = '/tmp/cities15000.zip';
 
 /** Stable IDs referenced by seed trips / manual picks — never re-slug these. */

@@ -836,12 +836,13 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 0 — Monorepo scaffold (2–3 days)
 
-- [ ] Yarn/pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`
-- [ ] Move existing Vite app to `apps/web` unchanged
-- [ ] Shared types package builds
-- [ ] Root scripts: `yarn dev`, `yarn dev:api`, `yarn dev:web`
+- [x] Yarn workspaces: `apps/web`, `apps/api`, `packages/shared`
+- [x] Move existing Vite app to `apps/web`
+- [x] Shared types package builds (`@ivc/shared`)
+- [x] Root scripts: `yarn dev`, `yarn dev:api`, `yarn dev:web`
+- [x] API scaffold: `GET /health`, `POST /graphql` stub
 
-**Exit criteria:** `yarn dev:web` works identically to today.
+**Exit criteria:** `yarn dev:web` works identically to today. ✅
 
 ---
 

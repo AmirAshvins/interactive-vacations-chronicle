@@ -25,7 +25,9 @@ Phone is not a “companion only” client. QR pairing is an optional workflow w
 
 | Command | Description |
 |---------|-------------|
-| `yarn dev` | Development server |
+| `yarn dev` | Web dev server (alias for `dev:web`) |
+| `yarn dev:web` | Web app only |
+| `yarn dev:api` | API stub server (port 4000) |
 | `yarn build` | Production build |
 | `yarn preview` | Preview production build |
 | `yarn lint` | ESLint |
@@ -34,20 +36,16 @@ Phone is not a “companion only” client. QR pairing is an optional workflow w
 ## Project layout
 
 ```
-src/
-  components/     UI (map, panels, chronicle, trip cards)
-  context/        TV focus + environment detection
-  data/           world cities + chronicle templates
-  db/             IndexedDB persistence
-  hooks/          Store, settings, environment
-  utils/          Map projection, flights, import/export
-public/
-  world-map.svg   Georeferenced country map
+apps/
+  web/            Vite + React client (map, chronicle, TV/mobile UX)
+  api/            GraphQL API scaffold (Phase 1+)
+packages/
+  shared/         Trip / travelogue / sync types (@ivc/shared)
 scripts/
   build-world-map-svg.mjs
 docs/
-  ENVIRONMENT_UX.md      Mobile / TV / desktop behavior
-  SERVER_STACK_PLAN.md   Server sync, auth, and hosting plan
+  ENVIRONMENT_UX.md
+  SERVER_STACK_PLAN.md
 ```
 
 ## Chronicle templates

@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const OUT_PATH = join(ROOT, 'public/world-map.svg');
+const OUT_PATH = join(ROOT, 'apps/web/public/world-map.svg');
 
 /** Not in Natural Earth 110m as a separate country — hand-traced path in map SVG space */
 const SOMALILAND_PATH_D =

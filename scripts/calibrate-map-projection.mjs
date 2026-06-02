@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const SVG_PATH = join(ROOT, 'public/world-map.svg');
+const SVG_PATH = join(ROOT, 'apps/web/public/world-map.svg');
 
 const GEO_CENTERS = {
   us: [39.8283, -98.5795],
