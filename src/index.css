@@ -463,21 +463,18 @@ html.solar-dark-phase body {
 .flight-arc {
   fill: none !important;
   stroke: var(--flight-stroke);
-  /* Fixed length in map SVG units — long routes get more dashes, not longer dashes */
-  stroke-dasharray: 5 7;
+  /* dasharray / dashoffset / opacity set per route in FlightArc */
   stroke-width: var(--flight-stroke-width);
   stroke-linecap: round;
-  opacity: 0.62;
   shape-rendering: geometricPrecision;
   transition:
     stroke var(--solar-transition),
     opacity var(--solar-transition);
 }
 
-/* Many home-origin routes stacked — slightly softer, still readable */
+/* Many hub routes — thinner strokes; opacity varies per route inline */
 .flight-layer--dense .flight-arc {
-  stroke-width: calc(var(--flight-stroke-width) * 0.92);
-  opacity: 0.48;
+  stroke-width: calc(var(--flight-stroke-width) * 0.82);
 }
 
 .flight-plane {
@@ -495,11 +492,7 @@ html.solar-dark-phase body {
 }
 
 .solar-dark-phase .flight-arc {
-  opacity: 0.68;
-}
-
-.solar-dark-phase .flight-layer--dense .flight-arc {
-  opacity: 0.52;
+  filter: brightness(1.08);
 }
 
 .solar-dark-phase .flight-plane {

@@ -6,6 +6,7 @@ import {
   projectCoordinates,
   unprojectCoordinates,
   getFlightPath,
+  getFlightDashStyle,
   MAP_VIEWBOX_STRING,
 } from '../utils/flightArc';
 import { resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
@@ -217,12 +218,21 @@ export default function WorldMap({
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   }, [showFlightPaths, flights, trips, homeOrigin]);
 
+  const denseFlightLayer = flightPaths.length > 36;
+
+  const flightPathsWithDash = useMemo(
+    () =>
+      flightPaths.map((entry) => ({
+        ...entry,
+        dash: getFlightDashStyle(entry.id, denseFlightLayer),
+      })),
+    [flightPaths, denseFlightLayer],
+  );
+
   const mapPins = useMemo(
     () => tripsForMapPins(trips, { homeOrigin, openTripIds }),
     [trips, homeOrigin, openTripIds],
   );
-
-  const denseFlightLayer = flightPaths.length > 36;
 
   const flightGeometryKey = useMemo(
     () =>
@@ -788,11 +798,12 @@ export default function WorldMap({
                   viewBox={MAP_VIEWBOX_STRING}
                   preserveAspectRatio="xMidYMid meet"
                 >
-                  {flightPaths.map((entry) => (
+                  {flightPathsWithDash.map((entry) => (
                     <FlightArc
                       key={entry.id}
                       id={entry.id}
                       pathD={entry.pathD}
+                      dash={entry.dash}
                       duration={entry.duration}
                       animatePlane={entry.idx < MAX_ANIMATED_FLIGHTS}
                       animationDelay={entry.idx * 0.35}
