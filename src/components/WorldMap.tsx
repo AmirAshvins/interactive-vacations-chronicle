@@ -69,11 +69,7 @@ type ParsedNode =
   | { type: 'path'; data: ParsedPath }
   | { type: 'g'; data: ParsedGroup };
 
-const useLegacyMap =
-  import.meta.env.VITE_MAP_LEGACY === 'true' || import.meta.env.VITE_MAP_LEGACY === '1';
-const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}${
-  useLegacyMap ? 'world-map-legacy.svg' : 'world-map.svg'
-}`;
+const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}world-map.svg`;
 
 
 export default function WorldMap({
@@ -289,7 +285,7 @@ export default function WorldMap({
   const handlePinPointerDown = useCallback(
     (e: React.PointerEvent, trip: Trip) => {
       if (!openTripIds.includes(trip.id) || !onTripLocationChange) return;
-      if ((e.target as HTMLElement).closest('.map-pin')) {
+      if ((e.target as Element).closest('.map-pin-svg')) {
         e.stopPropagation();
       }
       pinDragPrepRef.current = {
@@ -378,7 +374,7 @@ export default function WorldMap({
   const handleStagePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if ((e.target as HTMLElement).closest('.map-viewport-controls, button, a, input, label')) return;
-    if ((e.target as Element).closest('.map-pin-svg, .map-pin')) return;
+    if ((e.target as Element).closest('.map-pin-svg')) return;
     if (pinDrag) return;
     if (zoomRef.current <= MAP_MIN_ZOOM) return;
 

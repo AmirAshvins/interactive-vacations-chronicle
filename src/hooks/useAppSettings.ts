@@ -105,9 +105,5 @@ export function useAppSettings() {
     setMobileLayout,
     setHomeCityKey,
     setMapSettings,
-    /** @deprecated use isTvScreensaver */
-    isTvMode: settings.isTvScreensaver,
-    /** @deprecated use setTvScreensaver */
-    setIsTvMode: setTvScreensaver,
   };
 }

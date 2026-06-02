@@ -138,22 +138,3 @@ export async function readImageBlobsFromFiles(files: FileList | File[]): Promise
   return results;
 }
 
-/** @deprecated use readImageBlobsFromFiles — kept for legacy callers */
-async function compressImage(file: File, maxDim = 1200, quality = 0.82): Promise<string> {
-  const blob = await compressImageToBlob(file, maxDim, quality);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-export async function readImagesFromFiles(files: FileList | File[]): Promise<string[]> {
-  const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
-  const results: string[] = [];
-  for (const file of list.slice(0, 12)) {
-    results.push(await compressImage(file));
-  }
-  return results;
-}

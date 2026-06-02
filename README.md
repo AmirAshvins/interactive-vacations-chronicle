@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Bedrood Azizi Travelogue
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A family travel chronicle on an interactive world map — journal entries, flight arcs, photos, and a solar-driven day/night presentation. Built for desktop, mobile, and TV (remote / D-pad).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + TypeScript + Vite
+- Tailwind CSS 4
+- IndexedDB (`idb`) for trips and images
+- Natural Earth 110m countries → `public/world-map.svg`
 
-## React Compiler
+## Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Command | Description |
+|---------|-------------|
+| `yarn dev` | Development server |
+| `yarn build` | Production build |
+| `yarn preview` | Preview production build |
+| `yarn lint` | ESLint |
+| `yarn build:map` | Regenerate `public/world-map.svg` from Natural Earth GeoJSON |
 
-## Expanding the ESLint configuration
+## Project layout
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+  components/     UI (map, panels, chronicle, trip cards)
+  context/        TV focus + environment detection
+  data/           world cities + chronicle templates
+  db/             IndexedDB persistence
+  hooks/          Store, settings, environment
+  utils/          Map projection, flights, import/export
+public/
+  world-map.svg   Georeferenced country map
+scripts/
+  build-world-map-svg.mjs
+docs/
+  ENVIRONMENT_UX.md   Mobile / TV / desktop behavior
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Chronicle templates
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Bedrood Azizi routes live under `src/data/chronicleTemplates/`. Import from the Chronicle panel in the app.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## TV mode
+
+Enable **TV interaction** in Settings for remote navigation, map pan/zoom controls, and the on-screen focus debug bar.
+
+See [docs/ENVIRONMENT_UX.md](docs/ENVIRONMENT_UX.md) for layout and interaction details.

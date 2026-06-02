@@ -12,7 +12,10 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_PATH = join(ROOT, 'public/world-map.svg');
-const LEGACY_PATH = join(ROOT, 'public/world-map-legacy.svg');
+
+/** Not in Natural Earth 110m as a separate country — hand-traced path in map SVG space */
+const SOMALILAND_PATH_D =
+  'M512.674,502.797l3.526,2.403l1.046-0.052l8.757-3.008l0.994,3.206l-0.701,2.706l-1.893,1.503l-4.729-0.302l-6.769-4.158L512.674,502.797L512.674,502.797z';
 
 const VIEWBOX = { width: 784.077, height: 458.627, minX: 0, minY: 0 };
 const GEOJSON_URL =
@@ -72,12 +75,13 @@ function resolveIso2(props) {
   return code;
 }
 
-function extractSomalilandFromLegacy() {
-  if (!existsSync(LEGACY_PATH)) return null;
-  const svg = readFileSync(LEGACY_PATH, 'utf8');
-  const m = svg.match(/<path[^>]*id="_somaliland"[^>]*d="([^"]+)"/i);
-  if (!m) return null;
-  return m[1];
+function somalilandPath() {
+  if (existsSync(OUT_PATH)) {
+    const svg = readFileSync(OUT_PATH, 'utf8');
+    const m = svg.match(/<path[^>]*id="_somaliland"[^>]*d="([^"]+)"/i);
+    if (m) return m[1];
+  }
+  return SOMALILAND_PATH_D;
 }
 
 async function fetchGeoJson() {
@@ -140,7 +144,7 @@ async function main() {
   }
 
   const countryEntries = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
-  const somalilandD = extractSomalilandFromLegacy();
+  const somalilandD = somalilandPath();
 
   const svg = buildSvg(countryEntries, somalilandD);
   writeFileSync(OUT_PATH, svg, 'utf8');

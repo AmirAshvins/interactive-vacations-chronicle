@@ -29,7 +29,7 @@
   height: var(--env-tv-touch-min);
 }
 
-.env-tv-interaction .map-pin:focus-visible .map-pin-dot,
+.env-tv-interaction .map-pin-svg:focus-visible .map-pin-svg-dot,
 .env-tv-interaction .dock-btn:focus-visible,
 .env-tv-interaction .right-panel-tab:focus-visible,
 .env-tv-interaction .map-viewport-btn:focus-visible,
@@ -41,32 +41,6 @@
 .tv-focused {
   box-shadow: var(--env-focus-ring);
   outline: none;
-}
-
-.env-tv-interaction .map-pin-tv-focused .map-pin-dot {
-  transform: scale(1.45);
-  box-shadow:
-    0 0 0 4px rgba(165, 132, 82, 0.45),
-    0 2px 10px rgba(0, 0, 0, 0.35);
-}
-
-.map-pin-tv-label {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  pointer-events: none;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #2c2c2a;
-  background: rgba(250, 249, 246, 0.95);
-  border: 1px solid rgba(165, 132, 82, 0.35);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .chronicle-log-tv-focused {

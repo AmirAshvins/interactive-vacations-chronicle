@@ -56,26 +56,27 @@ export function getDb() {
   return dbPromise;
 }
 
-type LegacyTrip = Trip & { images?: string[] };
+/** Chronicle import may still carry inline base64 `images` instead of `imageIds` */
+type TripWithInlineImages = Trip & { images?: string[] };
 
-function stripLegacyImages(trip: LegacyTrip): Trip {
-  const { images: _legacy, ...rest } = trip;
+function stripInlineImages(trip: TripWithInlineImages): Trip {
+  const { images: _removed, ...rest } = trip;
   return { ...rest, imageIds: rest.imageIds ?? [] };
 }
 
-async function normalizeLoadedTrip(raw: LegacyTrip): Promise<Trip> {
+async function normalizeLoadedTrip(raw: TripWithInlineImages): Promise<Trip> {
   if (raw.imageIds?.length) {
-    return stripLegacyImages(raw);
+    return stripInlineImages(raw);
   }
 
   if (raw.images?.length) {
     const imageIds = await persistDataUrlsAsImages(raw.id, raw.images);
-    const trip: Trip = { ...stripLegacyImages(raw), imageIds };
+    const trip: Trip = { ...stripInlineImages(raw), imageIds };
     await saveTripRecord(trip);
     return trip;
   }
 
-  return { ...stripLegacyImages(raw), imageIds: [] };
+  return { ...stripInlineImages(raw), imageIds: [] };
 }
 
 async function replaceTrips(trips: Trip[]): Promise<void> {
@@ -95,7 +96,7 @@ export async function loadTravelogue(initial: TravelogueData): Promise<Travelogu
 
   if (initialized) {
     const rawTrips = await db.getAll('trips');
-    const trips = await Promise.all(rawTrips.map((t) => normalizeLoadedTrip(t as LegacyTrip)));
+    const trips = await Promise.all(rawTrips.map((t) => normalizeLoadedTrip(t as TripWithInlineImages)));
     return { trips };
   }
 
@@ -119,12 +120,3 @@ export async function deleteTripRecord(id: string): Promise<void> {
   await db.delete('trips', id);
 }
 
-/** @deprecated use saveTripRecord */
-export async function saveTrip(trip: Trip): Promise<void> {
-  await saveTripRecord(trip);
-}
-
-/** @deprecated use deleteTripRecord */
-export async function deleteTrip(id: string): Promise<void> {
-  await deleteTripRecord(id);
-}

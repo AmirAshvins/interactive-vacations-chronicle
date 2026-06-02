@@ -65,13 +65,3 @@ export function getFlightPath(
   return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
 }
 
-/** @deprecated Use getFlightPath */
-export function getGreatCirclePath(
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number,
-  _laneOffset = 0,
-): string {
-  return getFlightPath(fromLat, fromLng, toLat, toLng);
-}

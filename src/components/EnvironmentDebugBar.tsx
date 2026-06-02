@@ -4,6 +4,7 @@ import { useTvFocus } from '../context/TvFocusContext';
 const ZONE_LABELS: Record<string, string> = {
   dock: 'Dock',
   map: 'Map pins',
+  'map-controls': 'Map zoom / pan',
   'panel-header': 'Panel tabs',
   chronicle: 'Chronicle list',
   'chronicle-archive': 'Chronicle import/export',
