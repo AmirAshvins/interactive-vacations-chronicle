@@ -30,6 +30,7 @@ interface SettingsSidebarProps {
   mapPinStyle?: MapPinStyleId;
   onMapPinStyleChange?: (style: MapPinStyleId) => void;
   isOverlayVisible?: boolean;
+  readOnly?: boolean;
 }
 
 export default function SettingsSidebar({

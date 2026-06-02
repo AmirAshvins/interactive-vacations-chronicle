@@ -7,12 +7,16 @@ import SignUpPage from './pages/SignUpPage';
 import TravelogueListPage from './pages/TravelogueListPage';
 import TraveloguePage from './pages/TraveloguePage';
 import GuestPage from './pages/GuestPage';
+import TvPage from './pages/TvPage';
+import PairTvPage from './pages/PairTvPage';
 import { useAuth } from './context/AuthContext';
+import { detectEnvironment } from './utils/detectEnvironment';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 function RootRedirect() {
   const { user, ready, lastTravelogueId } = useAuth();
+  const platform = detectEnvironment().kind;
   if (!ready) {
     return (
       <div className="flex h-full items-center justify-center bg-[#f5f0e8]">
@@ -20,6 +24,7 @@ function RootRedirect() {
       </div>
     );
   }
+  if (platform === 'tv') return <Navigate to="/tv" replace />;
   if (!user) return <Navigate to="/login" replace />;
   if (lastTravelogueId) return <Navigate to={`/t/${lastTravelogueId}`} replace />;
   return <Navigate to="/travelogues" replace />;
@@ -47,6 +52,8 @@ export default function App() {
               <Route path="/travelogues" element={<TravelogueListPage />} />
               <Route path="/t/:travelogueId" element={<TraveloguePage appSettings={appSettings} />} />
               <Route path="/guest" element={<GuestPage appSettings={appSettings} />} />
+              <Route path="/tv" element={<TvPage />} />
+              <Route path="/pair" element={<PairTvPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

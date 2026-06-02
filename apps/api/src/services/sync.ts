@@ -1,7 +1,7 @@
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Database } from '../db/index.js';
 import { syncOutbox, travelogues, trips } from '../db/schema.js';
-import { AppError, notFound } from '../lib/errors.js';
+import { AppError, forbidden, notFound } from '../lib/errors.js';
 import { mapTripsToGraphql } from '../graphql/mappers.js';
 import type { TripPatchPayload } from '../pubsub/travelogue.js';
 import { getMemberRole, requireRole } from './travelogue.js';
@@ -70,11 +70,18 @@ async function markMutationApplied(
 export async function getSyncDelta(
   db: Database,
   travelogueId: string,
-  userId: string,
+  userId: string | null,
   sinceVersion: number,
+  tvTravelogueId?: string | null,
 ): Promise<{ travelogueVersion: number; patches: TripPatchPayload[] }> {
-  const role = await getMemberRole(db, travelogueId, userId);
-  requireRole(role, 'viewer');
+  if (tvTravelogueId) {
+    if (tvTravelogueId !== travelogueId) forbidden();
+  } else if (userId) {
+    const role = await getMemberRole(db, travelogueId, userId);
+    requireRole(role, 'viewer');
+  } else {
+    forbidden();
+  }
 
   const [travelogue] = await db
     .select()

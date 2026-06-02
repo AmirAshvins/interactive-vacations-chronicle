@@ -293,6 +293,50 @@ export const PUSH_CHANGES = /* GraphQL */ `
   }
 `;
 
+export const CREATE_TV_SESSION = /* GraphQL */ `
+  mutation CreateTvSession($displayLabel: String) {
+    createTvSession(displayLabel: $displayLabel) {
+      id
+      pairingCode
+      pairingUrl
+      expiresAt
+      claimed
+      travelogueId
+      displayLabel
+    }
+  }
+`;
+
+export const CLAIM_TV_SESSION = /* GraphQL */ `
+  mutation ClaimTvSession($code: String!, $travelogueId: ID!) {
+    claimTvSession(code: $code, travelogueId: $travelogueId) {
+      id
+      pairingCode
+      claimed
+      travelogueId
+      displayLabel
+    }
+  }
+`;
+
+export const UNPAIR_TV_SESSION = /* GraphQL */ `
+  mutation UnpairTvSession {
+    unpairTvSession
+  }
+`;
+
+export const TV_SESSION_UPDATED = /* GraphQL */ `
+  subscription TvSessionUpdated($sessionId: ID!) {
+    tvSessionUpdated(sessionId: $sessionId) {
+      id
+      claimed
+      travelogueId
+      deviceToken
+      displayLabel
+    }
+  }
+`;
+
 export const TRAVELOGUE_UPDATED = /* GraphQL */ `
   subscription TravelogueUpdated($travelogueId: ID!) {
     travelogueUpdated(travelogueId: $travelogueId) {

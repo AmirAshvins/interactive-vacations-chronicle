@@ -115,3 +115,13 @@ Synced travelogues queue trip edits in IndexedDB when offline and flush via `pus
 ```bash
 yarn test:push   # API pushChanges + syncDelta smoke test
 ```
+
+### TV pairing (Phase 6)
+
+Living-room display at `/tv` — scan the QR (or open `/pair?code=…` on phone while logged in). Phone keeps the full editor; the TV follows via `travelogueUpdated`.
+
+```bash
+yarn test:tv     # createTvSession → claimTvSession → travelogue query with device token
+```
+
+Set `PUBLIC_APP_ORIGIN` in `apps/api/.env` so pairing URLs point at your web app (default `http://localhost:5173`).

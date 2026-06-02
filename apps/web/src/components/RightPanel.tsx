@@ -30,6 +30,8 @@ interface RightPanelProps {
   onUpdateTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onRemoveTrip: (id: string) => void;
   onImportTrips: (result: ChronicleImportResult) => void;
+  displayOnly?: boolean;
+  settingsReadOnly?: boolean;
   solarState: SolarState;
   currentTime: number;
   onTimeChange: (time: number) => void;
@@ -64,6 +66,8 @@ export default function RightPanel({
   onUpdateTrip,
   onRemoveTrip,
   onImportTrips,
+  displayOnly = false,
+  settingsReadOnly = false,
   solarState,
   currentTime,
   onTimeChange,
@@ -155,16 +159,18 @@ export default function RightPanel({
             <BookOpen size={14} />
             Chronicle
           </button>
-          <button
-            type="button"
-            onClick={() => onTabChange('settings')}
-            className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[10px] font-semibold uppercase tracking-widest ${
-              tab === 'settings' ? 'right-panel-tab-active' : ''
-            } ${tv.isPanelTabFocused(1) ? 'tv-focused' : ''}`}
-          >
-            <Sliders size={14} />
-            Settings
-          </button>
+          {!displayOnly ? (
+            <button
+              type="button"
+              onClick={() => onTabChange('settings')}
+              className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[10px] font-semibold uppercase tracking-widest ${
+                tab === 'settings' ? 'right-panel-tab-active' : ''
+              } ${tv.isPanelTabFocused(1) ? 'tv-focused' : ''}`}
+            >
+              <Sliders size={14} />
+              Settings
+            </button>
+          ) : null}
         </div>
         <button
           type="button"
@@ -192,11 +198,13 @@ export default function RightPanel({
             onUpdateTrip={onUpdateTrip}
             onRemoveTrip={onRemoveTrip}
             onImportTrips={onImportTrips}
+            readOnly={displayOnly}
           />
         )}
         {tab === 'settings' && (
           <SettingsSidebar
             embedded
+            readOnly={settingsReadOnly}
             solarState={solarState}
             currentTime={currentTime}
             onTimeChange={onTimeChange}

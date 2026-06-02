@@ -134,10 +134,26 @@ export const typeDefs = /* GraphQL */ `
     detachImage(tripId: ID!, imageId: ID!, clientMutationId: String!): Trip!
 
     pushChanges(travelogueId: ID!, changes: [ChangeInput!]!): PushChangesResult!
+
+    createTvSession(displayLabel: String): TvSession!
+    claimTvSession(code: String!, travelogueId: ID!): TvSession!
+    unpairTvSession: Boolean!
+  }
+
+  type TvSession {
+    id: ID!
+    pairingCode: String!
+    pairingUrl: String!
+    expiresAt: DateTime!
+    claimed: Boolean!
+    travelogueId: ID
+    displayLabel: String
+    deviceToken: String
   }
 
   type Subscription {
     travelogueUpdated(travelogueId: ID!): TripPatch!
+    tvSessionUpdated(sessionId: ID!): TvSession!
   }
 
   input MapSettingsInput {

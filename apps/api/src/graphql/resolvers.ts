@@ -1,12 +1,14 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 import type { AppContext } from '../context.js';
-import { getUserId } from '../context.js';
-import { requireAuth } from '../lib/errors.js';
+import { getTvTravelogueId, getUserId } from '../context.js';
+import { AppError, requireAuth } from '../lib/errors.js';
 import * as authService from '../services/auth.js';
 import * as travelogueService from '../services/travelogue.js';
 import * as tripService from '../services/trip.js';
 import * as imageService from '../services/images.js';
 import * as syncService from '../services/sync.js';
+import * as tvPairingService from '../services/tvPairing.js';
+import { tvSessionPubSub } from '../pubsub/tvSession.js';
 import * as syncPublish from '../services/syncPublish.js';
 import { traveloguePubSub } from '../pubsub/travelogue.js';
 import { getMemberRole, requireRole } from '../services/travelogue.js';
@@ -42,6 +44,10 @@ export const resolvers = {
     expiresAt: (parent: { expiresAt: Date }) => parent.expiresAt.toISOString(),
   },
 
+  TvSession: {
+    expiresAt: (parent: { expiresAt: string }) => parent.expiresAt,
+  },
+
   User: {
     travelogues: async (parent: { id: string }, _args: unknown, ctx: AppContext) => {
       const summaries = await travelogueService.listTravelogueSummariesForUser(ctx.db, parent.id);
@@ -60,11 +66,13 @@ export const resolvers = {
 
     travelogue: async (_parent: unknown, args: { id: string }, ctx: AppContext) => {
       const userId = getUserId(ctx);
-      requireAuth(userId);
+      const tvTravelogueId = getTvTravelogueId(ctx);
+      if (!userId && !tvTravelogueId) requireAuth(userId);
       const { travelogue, trips } = await travelogueService.getTravelogueById(
         ctx.db,
         args.id,
         userId,
+        tvTravelogueId,
       );
       const tripGql = await mapTripsToGraphql(ctx.db, trips);
       return mapTravelogueToGraphql(travelogue, tripGql);
@@ -76,8 +84,16 @@ export const resolvers = {
       ctx: AppContext,
     ) => {
       const userId = getUserId(ctx);
-      requireAuth(userId);
-      return syncService.getSyncDelta(ctx.db, args.travelogueId, userId, args.sinceVersion);
+      const tvTravelogueId = getTvTravelogueId(ctx);
+      if (!userId && !tvTravelogueId) requireAuth(userId);
+      if (tvTravelogueId && tvTravelogueId !== args.travelogueId) requireAuth(userId);
+      return syncService.getSyncDelta(
+        ctx.db,
+        args.travelogueId,
+        userId,
+        args.sinceVersion,
+        tvTravelogueId,
+      );
     },
   },
 
@@ -263,6 +279,32 @@ export const resolvers = {
       requireAuth(userId);
       return syncService.pushChanges(ctx.db, args.travelogueId, userId, args.changes);
     },
+
+    createTvSession: async (
+      _parent: unknown,
+      args: { displayLabel?: string | null },
+      ctx: AppContext,
+    ) => {
+      return tvPairingService.createTvSession(ctx.db, args.displayLabel);
+    },
+
+    claimTvSession: async (
+      _parent: unknown,
+      args: { code: string; travelogueId: string },
+      ctx: AppContext,
+    ) => {
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      return tvPairingService.claimTvSession(ctx.db, args.code, args.travelogueId, userId);
+    },
+
+    unpairTvSession: async (_parent: unknown, _args: unknown, ctx: AppContext) => {
+      const tv = ctx.tv;
+      if (!tv) throw new AppError('TV device auth required', 'UNAUTHENTICATED', 401);
+      const authHeader = ctx.request.headers.get('Authorization');
+      const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+      return tvPairingService.unpairTvSession(ctx.db, tv.tvSessionId, bearer);
+    },
   },
 
   Subscription: {
@@ -273,12 +315,28 @@ export const resolvers = {
         ctx: AppContext,
       ) => {
         const userId = getUserId(ctx);
-        requireAuth(userId);
-        const role = await getMemberRole(ctx.db, args.travelogueId, userId);
-        requireRole(role, 'viewer');
+        const tvTravelogueId = getTvTravelogueId(ctx);
+        if (tvTravelogueId) {
+          if (tvTravelogueId !== args.travelogueId) requireAuth(userId);
+        } else {
+          requireAuth(userId);
+          const role = await getMemberRole(ctx.db, args.travelogueId, userId);
+          requireRole(role, 'viewer');
+        }
         return traveloguePubSub.subscribe('travelogue-updated', args.travelogueId);
       },
       resolve: (payload: import('../pubsub/travelogue.js').TripPatchPayload) => payload,
+    },
+
+    tvSessionUpdated: {
+      subscribe: async (
+        _parent: unknown,
+        args: { sessionId: string },
+        _ctx: AppContext,
+      ) => {
+        return tvSessionPubSub.subscribe('tv-session-updated', args.sessionId);
+      },
+      resolve: (payload: import('../pubsub/tvSession.js').TvSessionPayload) => payload,
     },
   },
 };

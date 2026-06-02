@@ -85,9 +85,20 @@ export async function createTravelogue(db: Database, userId: string, name: strin
   };
 }
 
-export async function getTravelogueById(db: Database, travelogueId: string, userId: string) {
-  const role = await getMemberRole(db, travelogueId, userId);
-  requireRole(role, 'viewer');
+export async function getTravelogueById(
+  db: Database,
+  travelogueId: string,
+  userId: string | null,
+  tvTravelogueId?: string | null,
+) {
+  if (tvTravelogueId) {
+    if (tvTravelogueId !== travelogueId) forbidden();
+  } else if (userId) {
+    const role = await getMemberRole(db, travelogueId, userId);
+    requireRole(role, 'viewer');
+  } else {
+    forbidden();
+  }
 
   const [row] = await db.select().from(travelogues).where(eq(travelogues.id, travelogueId)).limit(1);
   if (!row) notFound('Travelogue not found');

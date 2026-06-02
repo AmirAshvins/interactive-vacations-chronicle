@@ -7,6 +7,9 @@ import { createContextFactory, createWsContext } from './context.js';
 import { env } from './env.js';
 import { graphqlPlugins, schema } from './graphql/schema.js';
 import { verifyAccessToken } from './auth/jwt.js';
+import { verifyTvDeviceToken } from './auth/tvDeviceToken.js';
+import { validateTvDeviceAccess } from './services/tvPairing.js';
+import { db } from './db/index.js';
 import { handleStorageRequest } from './http/storageRoutes.js';
 import { getStorage } from './services/storage/index.js';
 
@@ -33,7 +36,7 @@ const httpServer = createServer((req, res) => {
         JSON.stringify({
           ok: dbOk,
           service: '@ivc/api',
-          phase: '5',
+          phase: '6',
           graphql: true,
           subscriptions: true,
           storage: getStorage().mode,
@@ -64,8 +67,11 @@ const wsCleanup = useServer(
       const raw = ctx.connectionParams?.Authorization;
       if (typeof raw !== 'string' || !raw) return false;
       const token = raw.replace(/^Bearer\s+/i, '');
-      const payload = await verifyAccessToken(token);
-      return payload !== null;
+      const userPayload = await verifyAccessToken(token);
+      if (userPayload) return true;
+      const tvPayload = await verifyTvDeviceToken(token);
+      if (!tvPayload) return false;
+      return validateTvDeviceAccess(db, tvPayload.sub, tvPayload.tid, token);
     },
   },
   wsServer,

@@ -13,7 +13,7 @@ interface ChronicleLogCardProps {
   hasFlight: boolean;
   homeOrigin: HomeOrigin | null;
   onSelect: (trip: Trip) => void;
-  onEdit: (trip: Trip, e: React.MouseEvent) => void;
+  onEdit?: (trip: Trip, e: React.MouseEvent) => void;
 }
 
 function ChronicleLogCard({
@@ -56,14 +56,16 @@ function ChronicleLogCard({
           <span className="text-[8px] uppercase tracking-wider opacity-40">
             {getCountryName(trip.countryCode)}
           </span>
-          <button
-            type="button"
-            onClick={(e) => onEdit(trip, e)}
-            className={`chronicle-log-edit shrink-0 ${isDarkPhase ? 'chronicle-log-edit--dark' : 'chronicle-log-edit--light'}`}
-            aria-label="Edit journey"
-          >
-            <Pencil size={13} strokeWidth={2.25} aria-hidden />
-          </button>
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={(e) => onEdit(trip, e)}
+              className={`chronicle-log-edit shrink-0 ${isDarkPhase ? 'chronicle-log-edit--dark' : 'chronicle-log-edit--light'}`}
+              aria-label="Edit journey"
+            >
+              <Pencil size={13} strokeWidth={2.25} aria-hidden />
+            </button>
+          ) : null}
         </div>
       </div>
 

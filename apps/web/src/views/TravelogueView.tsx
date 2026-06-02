@@ -16,6 +16,8 @@ import { pinAnchoredCardPosition } from '../utils/tripCardPosition';
 import { deriveJournalFlights, getHomeOrigin } from '../utils/flightRoutes';
 import { useTravelogueStore } from '../hooks/useTravelogueStore';
 import { useSyncedTravelogueStore } from '../hooks/useSyncedTravelogueStore';
+import { useTvDisplayStore } from '../hooks/useTvDisplayStore';
+import { loadPhonePairHint, clearPhonePairHint } from '../lib/tvSessionStorage';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { useAuth } from '../context/AuthContext';
 import { gqlRequest } from '../lib/graphql/client';
@@ -31,15 +33,24 @@ import { ArrowLeft } from 'lucide-react';
 
 const INITIAL_TRIPS: Trip[] = [];
 
-export type TravelogueViewMode = 'local' | 'synced';
+export type TravelogueViewMode = 'local' | 'synced' | 'tv-display';
 
 export interface TravelogueViewProps {
   mode: TravelogueViewMode;
   travelogueId?: string;
+  deviceToken?: string | null;
   appSettings: ReturnType<typeof useAppSettings>;
+  onUnpairTv?: () => void;
 }
 
-export default function TravelogueView({ mode, travelogueId, appSettings }: TravelogueViewProps) {
+export default function TravelogueView({
+  mode,
+  travelogueId,
+  deviceToken,
+  appSettings,
+  onUnpairTv,
+}: TravelogueViewProps) {
+  const displayOnly = mode === 'tv-display';
   const { tvInteraction, mobileLayout } = useEnvironmentContext();
   const [pinScreenPositions, setPinScreenPositions] = useState<
     Record<string, { x: number; y: number }>
@@ -96,7 +107,10 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
     mode === 'synced' ? accessToken : null,
   );
 
-  const travelogue = mode === 'synced' ? syncedTravelogue : localTravelogue;
+  const tvDisplay = useTvDisplayStore(travelogueId ?? '', mode === 'tv-display' ? deviceToken ?? null : null);
+
+  const travelogue =
+    mode === 'tv-display' ? tvDisplay : mode === 'synced' ? syncedTravelogue : localTravelogue;
 
   const {
     ready: travelogueReady,
@@ -109,16 +123,23 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
     visitedCountryCodes,
   } = travelogue;
 
-  const syncError = mode === 'synced' ? syncedTravelogue.error : null;
-  const syncMeta = mode === 'synced' ? syncedTravelogue.meta : null;
+  const syncError =
+    mode === 'synced' ? syncedTravelogue.error : mode === 'tv-display' ? tvDisplay.error : null;
+  const syncMeta =
+    mode === 'synced' ? syncedTravelogue.meta : mode === 'tv-display' ? tvDisplay.meta : null;
   const syncOnline = mode === 'synced' ? syncedTravelogue.isOnline : true;
   const syncPending = mode === 'synced' ? syncedTravelogue.pendingSync : 0;
   const syncNotice = mode === 'synced' ? syncedTravelogue.syncNotice : null;
   const dismissSyncNotice =
     mode === 'synced' ? syncedTravelogue.dismissSyncNotice : () => {};
 
+  const phonePairHint =
+    mode === 'synced' && travelogueId && loadPhonePairHint()?.travelogueId === travelogueId
+      ? loadPhonePairHint()
+      : null;
+
   useEffect(() => {
-    if (mode !== 'synced' || !syncMeta) return;
+    if ((mode !== 'synced' && mode !== 'tv-display') || !syncMeta) return;
     setHomeCityKey(syncMeta.homeCityKey);
     setMapSettings(syncMeta.mapSettings);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- apply server settings once per travelogue load
@@ -386,24 +407,57 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
 
   const appContent = (
     <div className="relative h-full w-full overflow-hidden">
-      {mode === 'synced' ? (
+      {displayOnly && onUnpairTv ? (
+        <button
+          type="button"
+          className="absolute left-4 top-14 z-[85] rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)]/90 px-3 py-2 text-xs font-medium text-[var(--panel-text)] backdrop-blur-sm"
+          onClick={onUnpairTv}
+        >
+          Unpair TV
+        </button>
+      ) : null}
+      {phonePairHint ? (
+        <div className="absolute left-4 right-4 top-14 z-[90] flex items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50/95 px-4 py-2 text-sm text-sky-900">
+          <span>
+            {phonePairHint.displayLabel ?? 'TV'} connected — edits here update the big screen.
+          </span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium uppercase tracking-wide opacity-70"
+            onClick={clearPhonePairHint}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {mode === 'synced' || mode === 'tv-display' ? (
         <div
           className={`absolute right-4 top-4 z-[85] rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider backdrop-blur-sm ${
-            !syncOnline
-              ? 'border-amber-600/30 bg-amber-50/90 text-amber-900'
-              : syncPending > 0
-                ? 'border-sky-600/30 bg-sky-50/90 text-sky-900'
-                : 'border-emerald-600/30 bg-emerald-50/90 text-emerald-800'
+            displayOnly
+              ? 'border-violet-600/30 bg-violet-50/90 text-violet-900'
+              : !syncOnline
+                ? 'border-amber-600/30 bg-amber-50/90 text-amber-900'
+                : syncPending > 0
+                  ? 'border-sky-600/30 bg-sky-50/90 text-sky-900'
+                  : 'border-emerald-600/30 bg-emerald-50/90 text-emerald-800'
           }`}
           title={
-            !syncOnline
-              ? 'Offline — edits save locally and sync when back online'
-              : syncPending > 0
-                ? `${syncPending} change(s) waiting to sync`
-                : 'Changes from other devices appear automatically'
+            displayOnly
+              ? 'TV display mode — edit from your phone'
+              : !syncOnline
+                ? 'Offline — edits save locally and sync when back online'
+                : syncPending > 0
+                  ? `${syncPending} change(s) waiting to sync`
+                  : 'Changes from other devices appear automatically'
           }
         >
-          {!syncOnline ? 'Offline' : syncPending > 0 ? `Sync (${syncPending})` : 'Live'}
+          {displayOnly
+            ? 'TV Display'
+            : !syncOnline
+              ? 'Offline'
+              : syncPending > 0
+                ? `Sync (${syncPending})`
+                : 'Live'}
         </div>
       ) : null}
       {!travelogueReady && (
@@ -428,7 +482,7 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
           </button>
         </div>
       ) : null}
-      {mode === 'synced' ? (
+      {mode === 'synced' && !displayOnly ? (
         <Link
           to="/travelogues"
           className="absolute left-4 top-4 z-[85] flex items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)]/90 px-3 py-2 text-xs font-medium text-[var(--panel-text)] backdrop-blur-sm"
@@ -505,25 +559,40 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
         flights={flights}
         countryCodes={countryCodes}
         onTripSelect={openTripPanel}
-        onAddTrip={(trip, imageChanges) => void addTrip(trip, imageChanges)}
-        onUpdateTrip={(trip, imageChanges) => void updateTrip(trip, imageChanges)}
-        onRemoveTrip={removeTrip}
-        onImportTrips={(result) => {
-          if (result.resolution === 'merge') {
-            void mergeImportTrips(result.trips);
-          } else {
-            void importTrips(result.trips);
-          }
-          setOpenTripCards({});
-          resetIdleTimer();
-        }}
+        displayOnly={displayOnly}
+        onAddTrip={
+          displayOnly
+            ? () => {}
+            : (trip, imageChanges) => void addTrip(trip, imageChanges)
+        }
+        onUpdateTrip={
+          displayOnly
+            ? () => {}
+            : (trip, imageChanges) => void updateTrip(trip, imageChanges)
+        }
+        onRemoveTrip={displayOnly ? () => {} : removeTrip}
+        onImportTrips={
+          displayOnly
+            ? () => {}
+            : (result) => {
+                if (result.resolution === 'merge') {
+                  void mergeImportTrips(result.trips);
+                } else {
+                  void importTrips(result.trips);
+                }
+                setOpenTripCards({});
+                resetIdleTimer();
+              }
+        }
         homeOrigin={homeOrigin}
         homeCityKey={homeCityKey}
         onHomeCityChange={(cityKey) => {
+          if (displayOnly) return;
           setHomeCityKey(cityKey);
           void persistTravelogueSettings({ homeCityKey: cityKey });
           resetIdleTimer();
         }}
+        settingsReadOnly={displayOnly}
         solarState={solarState}
         currentTime={currentTime}
         onTimeChange={(val) => {

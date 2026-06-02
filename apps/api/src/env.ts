@@ -18,6 +18,9 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().default('ivc-images'),
   R2_ENDPOINT: z.string().url().optional(),
+  PUBLIC_APP_ORIGIN: z.string().url().default('http://localhost:5173'),
+  TV_PAIRING_TTL_SECONDS: z.coerce.number().default(600),
+  TV_DEVICE_TTL_SECONDS: z.coerce.number().default(60 * 60 * 24 * 30),
 });
 
 const parsed = envSchema.parse(process.env);

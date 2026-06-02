@@ -1,6 +1,8 @@
 import type { YogaInitialContext } from 'graphql-yoga';
 import { lucia, type AuthSession, type AuthUser } from './auth/lucia.js';
 import { verifyAccessToken } from './auth/jwt.js';
+import { verifyTvDeviceToken } from './auth/tvDeviceToken.js';
+import { validateTvDeviceAccess } from './services/tvPairing.js';
 import { db, type Database } from './db/index.js';
 
 const contextByRequest = new WeakMap<Request, AppContext>();
@@ -14,9 +16,15 @@ export interface AuthState {
   session: AuthSession | null;
 }
 
+export interface TvAuthState {
+  tvSessionId: string;
+  travelogueId: string;
+}
+
 export interface AppContext extends AuthState {
   db: Database;
   request: Request;
+  tv: TvAuthState | null;
   /** Set by auth mutations; consumed by response plugin */
   pendingSetCookies: string[];
 }
@@ -29,6 +37,8 @@ export async function createAppContext(request: Request): Promise<AppContext> {
   const authHeader = request.headers.get('Authorization');
   const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
+  let tv: TvAuthState | null = null;
+
   if (bearer) {
     const payload = await verifyAccessToken(bearer);
     if (payload) {
@@ -36,6 +46,14 @@ export async function createAppContext(request: Request): Promise<AppContext> {
       if (result.session && result.user && result.user.id === payload.sub) {
         session = result.session;
         user = result.user;
+      }
+    } else {
+      const tvPayload = await verifyTvDeviceToken(bearer);
+      if (tvPayload) {
+        const ok = await validateTvDeviceAccess(db, tvPayload.sub, tvPayload.tid, bearer);
+        if (ok) {
+          tv = { tvSessionId: tvPayload.sub, travelogueId: tvPayload.tid };
+        }
       }
     }
   }
@@ -55,7 +73,7 @@ export async function createAppContext(request: Request): Promise<AppContext> {
     }
   }
 
-  const ctx: AppContext = { db, user, session, pendingSetCookies, request };
+  const ctx: AppContext = { db, user, session, tv, pendingSetCookies, request };
   contextByRequest.set(request, ctx);
   return ctx;
 }
@@ -85,4 +103,8 @@ export async function createWsContext(
 
 export function getUserId(ctx: AppContext): string | null {
   return ctx.user?.id ?? null;
+}
+
+export function getTvTravelogueId(ctx: AppContext): string | null {
+  return ctx.tv?.travelogueId ?? null;
 }

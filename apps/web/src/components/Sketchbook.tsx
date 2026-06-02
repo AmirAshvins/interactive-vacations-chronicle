@@ -23,6 +23,7 @@ interface SketchbookProps {
   onUpdateTrip: (trip: Trip, imageChanges?: TripImageChanges) => void;
   onRemoveTrip: (id: string) => void;
   onImportTrips: (result: ChronicleImportResult) => void;
+  readOnly?: boolean;
   isOverlayVisible?: boolean;
 }
 
@@ -94,6 +95,7 @@ export default function Sketchbook({
   onUpdateTrip,
   onRemoveTrip,
   onImportTrips,
+  readOnly = false,
   isOverlayVisible = true,
 }: SketchbookProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -185,14 +187,16 @@ export default function Sketchbook({
             <Compass size={9} className="text-[#a58452]" />
             <span>Chronicle Logs</span>
           </div>
-          <button
-            type="button"
-            onClick={openNewTrip}
-            className="flex items-center gap-1.5 rounded-full bg-[#a58452] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-white hover:bg-[#b59563]"
-          >
-            <Plus size={11} />
-            Add
-          </button>
+          {!readOnly ? (
+            <button
+              type="button"
+              onClick={openNewTrip}
+              className="flex items-center gap-1.5 rounded-full bg-[#a58452] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-white hover:bg-[#b59563]"
+            >
+              <Plus size={11} />
+              Add
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -207,28 +211,31 @@ export default function Sketchbook({
           flightTripIds={flightTripIds}
           homeOrigin={homeOrigin}
           onTripSelect={onTripSelect}
-          onEditTrip={openEditTrip}
+          onEditTrip={readOnly ? undefined : openEditTrip}
           emptyState={
             <div className={`rounded-2xl border border-dashed py-8 text-center text-[10px] uppercase tracking-widest opacity-50 ${cardClass}`}>
-              No journeys yet — add your first trip
+              {readOnly ? 'No journeys in this chronicle' : 'No journeys yet — add your first trip'}
             </div>
           }
         />
       </div>
 
-      <div
-        className={`sketchbook-archive shrink-0 border-t ${
-          compactMobilePanel ? 'px-4 py-2.5' : 'p-5 pt-4'
-        } ${dividerClass}`}
-      >
-        <ChronicleTransfer
-          trips={trips}
-          isDarkPhase={isDarkPhase}
-          compact={compactMobilePanel}
-          onImport={onImportTrips}
-        />
-      </div>
+      {!readOnly ? (
+        <div
+          className={`sketchbook-archive shrink-0 border-t ${
+            compactMobilePanel ? 'px-4 py-2.5' : 'p-5 pt-4'
+          } ${dividerClass}`}
+        >
+          <ChronicleTransfer
+            trips={trips}
+            isDarkPhase={isDarkPhase}
+            compact={compactMobilePanel}
+            onImport={onImportTrips}
+          />
+        </div>
+      ) : null}
 
+      {!readOnly ? (
       <TripDialog
         open={dialogOpen}
         trip={editingTrip}
@@ -238,6 +245,7 @@ export default function Sketchbook({
         onDelete={editingTrip ? onRemoveTrip : undefined}
         onClose={() => setDialogOpen(false)}
       />
+      ) : null}
     </div>
   );
 

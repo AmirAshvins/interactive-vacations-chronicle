@@ -25,6 +25,7 @@
     "test:smoke": "yarn workspace @ivc/api test:smoke",
     "test:subscription": "yarn workspace @ivc/api test:subscription",
     "test:image": "yarn workspace @ivc/api test:image",
-    "test:push": "yarn workspace @ivc/api test:push"
+    "test:push": "yarn workspace @ivc/api test:push",
+    "test:tv": "yarn workspace @ivc/api test:tv"
   }
 }

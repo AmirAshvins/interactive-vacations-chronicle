@@ -913,13 +913,16 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 6 — TV pairing (1 week)
 
-- [ ] `tv_sessions` table + mutations
-- [ ] QR pairing screen on `/tv`
-- [ ] `/pair` page on phone (and desktop) — does not alter standalone phone UX
-- [ ] TV display mode: read-only map + chronicle; settings/chronicle management from phone
-- [ ] WS idle disconnect policy
+- [x] `tv_sessions` + `createTvSession` / `claimTvSession` / `unpairTvSession`
+- [x] `tvSessionUpdated` subscription (device token delivered to TV subscriber)
+- [x] QR pairing screen on `/tv`
+- [x] `/pair` page on phone (and desktop) — standalone phone UX unchanged
+- [x] TV display mode: read-only map + chronicle via device JWT
+- [ ] WS idle disconnect policy (30 min) — optional follow-up
 
 **Exit criteria:** Phone edits chronicle in normal standalone UI; paired TV updates live. Phone works fully with TV off.
+
+**Verify:** `yarn test:tv`; open `/tv` on a wide display, `/pair?code=…` on phone while logged in.
 
 ---
 

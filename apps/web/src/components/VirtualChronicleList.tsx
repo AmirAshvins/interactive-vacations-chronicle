@@ -11,7 +11,7 @@ interface VirtualChronicleListProps {
   flightTripIds: Set<string>;
   homeOrigin: HomeOrigin | null;
   onTripSelect: (trip: Trip) => void;
-  onEditTrip: (trip: Trip, e: React.MouseEvent) => void;
+  onEditTrip?: (trip: Trip, e: React.MouseEvent) => void;
   emptyState: React.ReactNode;
 }
 
