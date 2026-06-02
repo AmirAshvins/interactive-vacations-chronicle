@@ -7,6 +7,7 @@ import { syncTripsImageCache } from '../lib/graphql/syncImageCache';
 import { TRAVELOGUE } from '../lib/graphql/operations';
 import { applyTripPatch, type TripPatchMessage } from '../lib/graphql/applyTripPatch';
 import { useTravelogueSubscription } from './useTravelogueSubscription';
+import { useTvWsIdle } from './useTvWsIdle';
 
 export interface TvDisplayMeta {
   id: string;
@@ -81,7 +82,8 @@ export function useTvDisplayStore(travelogueId: string, deviceToken: string | nu
     })();
   }, []);
 
-  useTravelogueSubscription(travelogueId, deviceToken, applyRemotePatch, ready);
+  const wsActive = useTvWsIdle(Boolean(deviceToken));
+  useTravelogueSubscription(travelogueId, deviceToken, applyRemotePatch, ready && wsActive);
 
   const visitedCountryCodes = useCallback(
     () => [...new Set(trips.map((t) => t.countryCode.toLowerCase()))],

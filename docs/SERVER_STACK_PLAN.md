@@ -928,12 +928,13 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 7 — Production hardening (ongoing)
 
-- [ ] Email verification (Resend)
-- [ ] Rate limiting
+- [x] Email verification hook (Resend optional; dev logs link)
+- [x] Rate limiting (in-memory per IP; Fly/Redis later)
 - [ ] Sentry error tracking
 - [ ] Upstash Redis when running 2+ Fly machines
 - [ ] Database backups verified
-- [ ] Import migration: `importChronicle` from existing JSON export
+- [x] Import migration: `importChronicle` from existing JSON export
+- [x] TV WebSocket idle disconnect (30 min)
 
 ---
 

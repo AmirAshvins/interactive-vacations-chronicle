@@ -8,6 +8,7 @@ import * as tripService from '../services/trip.js';
 import * as imageService from '../services/images.js';
 import * as syncService from '../services/sync.js';
 import * as tvPairingService from '../services/tvPairing.js';
+import * as chronicleImportService from '../services/chronicleImport.js';
 import { tvSessionPubSub } from '../pubsub/tvSession.js';
 import * as syncPublish from '../services/syncPublish.js';
 import { traveloguePubSub } from '../pubsub/travelogue.js';
@@ -278,6 +279,22 @@ export const resolvers = {
       const userId = getUserId(ctx);
       requireAuth(userId);
       return syncService.pushChanges(ctx.db, args.travelogueId, userId, args.changes);
+    },
+
+    importChronicle: async (
+      _parent: unknown,
+      args: { travelogueId: string; json: string; mode: 'REPLACE' | 'MERGE' },
+      ctx: AppContext,
+    ) => {
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      return chronicleImportService.importChronicle(
+        ctx.db,
+        args.travelogueId,
+        userId,
+        args.json,
+        args.mode,
+      );
     },
 
     createTvSession: async (

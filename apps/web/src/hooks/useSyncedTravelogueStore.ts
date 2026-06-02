@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Trip } from '../types/travelogue';
 import type { ImportTrip } from '../utils/chronicleTransfer';
+import type { ChronicleImportResolution } from '../utils/chronicleImportResolve';
+import { importChronicleToServer } from '../lib/graphql/importChronicleApi';
 import { gqlRequest, GraphqlError } from '../lib/graphql/client';
 import {
   serverTripToTrip,
@@ -393,14 +395,31 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
     [accessToken, travelogueId, isOnline, reload, refreshPendingCount],
   );
 
+  const importChronicle = useCallback(
+    async (imported: ImportTrip[], resolution: ChronicleImportResolution) => {
+      if (!accessToken) return;
+      const tripsForExport = imported.map(({ importImages: _img, imageIds: _ids, ...fields }) => ({
+        ...fields,
+        imageIds: _ids ?? [],
+      })) as Trip[];
+      const next = await importChronicleToServer(
+        accessToken,
+        travelogueId,
+        tripsForExport,
+        resolution,
+      );
+      setTrips(next);
+      tripsRef.current = next;
+      await persistTripsCache(travelogueId, next);
+    },
+    [accessToken, travelogueId],
+  );
+
   const importTrips = useCallback(
     async (imported: ImportTrip[]) => {
-      for (const entry of imported) {
-        const { importImages: _img, imageIds: _ids, ...fields } = entry;
-        await addTrip({ ...fields, imageIds: [] } as Trip);
-      }
+      await importChronicle(imported, 'replace');
     },
-    [addTrip],
+    [importChronicle],
   );
 
   const mergeImportTrips = useCallback(
@@ -408,13 +427,10 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
       const prev = tripsRef.current;
       const existingIds = new Set(prev.map((t) => t.id));
       const toAdd = imported.filter((entry) => !existingIds.has(entry.id));
-      for (const entry of toAdd) {
-        const { importImages: _img, imageIds: _ids, ...fields } = entry;
-        await addTrip({ ...fields, imageIds: [] } as Trip);
-      }
+      await importChronicle(imported, 'merge');
       return { added: toAdd.length, kept: imported.length - toAdd.length };
     },
-    [addTrip],
+    [importChronicle],
   );
 
   const visitedCountryCodes = useCallback(

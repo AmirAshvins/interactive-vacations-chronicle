@@ -6,6 +6,7 @@ import { users } from '../db/schema.js';
 import { env } from '../env.js';
 import type { AppContext } from '../context.js';
 import { AppError } from '../lib/errors.js';
+import { sendVerificationEmail } from './email.js';
 
 export async function signUp(
   ctx: AppContext,
@@ -32,6 +33,10 @@ export async function signUp(
     .returning();
 
   if (!user) throw new AppError('Failed to create user', 'INTERNAL', 500);
+
+  const verifyUrl = `${env.PUBLIC_APP_ORIGIN}/verify?email=${encodeURIComponent(normalizedEmail)}`;
+  void sendVerificationEmail(normalizedEmail, verifyUrl);
+
   return createAuthPayload(ctx, user.id, user.email, user.displayName);
 }
 

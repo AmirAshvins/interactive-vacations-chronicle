@@ -21,6 +21,10 @@ const envSchema = z.object({
   PUBLIC_APP_ORIGIN: z.string().url().default('http://localhost:5173'),
   TV_PAIRING_TTL_SECONDS: z.coerce.number().default(600),
   TV_DEVICE_TTL_SECONDS: z.coerce.number().default(60 * 60 * 24 * 30),
+  RATE_LIMIT_MAX: z.coerce.number().default(180),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email().optional(),
 });
 
 const parsed = envSchema.parse(process.env);

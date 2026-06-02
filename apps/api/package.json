@@ -15,7 +15,8 @@
     "test:subscription": "tsx scripts/test-subscription.mts",
     "test:image": "tsx scripts/test-image-upload.mts",
     "test:push": "tsx scripts/test-push-changes.mts",
-    "test:tv": "tsx scripts/test-tv-pairing.mts"
+    "test:tv": "tsx scripts/test-tv-pairing.mts",
+    "test:import": "tsx scripts/test-import-chronicle.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",

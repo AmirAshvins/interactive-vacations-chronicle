@@ -1,6 +1,7 @@
 import { createSchema } from 'graphql-yoga';
 import { resolvers } from './resolvers.js';
 import { cookiePlugin } from './plugins.js';
+import { rateLimitPlugin } from './rateLimitPlugin.js';
 import { typeDefs } from './typeDefs.js';
 
 export const schema = createSchema({
@@ -8,4 +9,4 @@ export const schema = createSchema({
   resolvers,
 });
 
-export const graphqlPlugins = [cookiePlugin()];
+export const graphqlPlugins = [rateLimitPlugin(), cookiePlugin()];

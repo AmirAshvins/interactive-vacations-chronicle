@@ -135,6 +135,8 @@ export const typeDefs = /* GraphQL */ `
 
     pushChanges(travelogueId: ID!, changes: [ChangeInput!]!): PushChangesResult!
 
+    importChronicle(travelogueId: ID!, json: String!, mode: ImportMode!): Travelogue!
+
     createTvSession(displayLabel: String): TvSession!
     claimTvSession(code: String!, travelogueId: ID!): TvSession!
     unpairTvSession: Boolean!
@@ -181,5 +183,10 @@ export const typeDefs = /* GraphQL */ `
     tripId: ID
     baseVersion: Int
     payload: String
+  }
+
+  enum ImportMode {
+    REPLACE
+    MERGE
   }
 `;

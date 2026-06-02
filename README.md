@@ -125,3 +125,14 @@ yarn test:tv     # createTvSession → claimTvSession → travelogue query with 
 ```
 
 Set `PUBLIC_APP_ORIGIN` in `apps/api/.env` so pairing URLs point at your web app (default `http://localhost:5173`).
+
+### Production hardening (Phase 7)
+
+- Per-IP rate limiting on GraphQL (429 `RATE_LIMITED`; `/health` and `/storage/*` exempt)
+- `importChronicle` mutation for JSON journal import (REPLACE / MERGE) — synced travelogues use this instead of per-trip creates
+- Optional Resend email on signUp (`RESEND_API_KEY`, `EMAIL_FROM`); dev logs verify link without keys
+- TV display pauses WebSocket after 30 minutes idle; wakes on key/pointer
+
+```bash
+yarn test:import   # importChronicle MERGE + REPLACE smoke test
+```
