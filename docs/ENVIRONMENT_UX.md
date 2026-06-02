@@ -16,7 +16,7 @@ The phone app is **not** a remote control stub. Users can install the PWA on a p
 
 | Axis | Setting | Purpose |
 |------|---------|---------|
-| **Detected platform** | Automatic | `tv` \| `mobile` \| `desktop` from UA + viewport + pointer |
+| **Detected platform** | Automatic | `tv` \| `mobile` \| `desktop` from UA + viewport + pointer (tablets, incl. iPadOS “desktop” UA, never auto-TV) |
 | **TV interaction** | Auto / On / Off | D-pad focus, spatial map nav, back stack |
 | **Mobile layout** | Auto / On / Off | Bottom sheets, full-bleed map, thumb zones |
 | **TV screensaver** | On / Off | Auto-hide HUD after idle (existing behavior) |

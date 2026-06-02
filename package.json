@@ -27,6 +27,7 @@
     "test:image": "yarn workspace @ivc/api test:image",
     "test:push": "yarn workspace @ivc/api test:push",
     "test:tv": "yarn workspace @ivc/api test:tv",
-    "test:import": "yarn workspace @ivc/api test:import"
+    "test:import": "yarn workspace @ivc/api test:import",
+    "test:detect-env": "yarn workspace @ivc/api test:detect-env"
   }
 }

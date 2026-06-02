@@ -6,6 +6,7 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    /** Neon: use direct URL for migrations (`?sslmode=require` + direct connection). */
+    url: process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL!,
   },
 });

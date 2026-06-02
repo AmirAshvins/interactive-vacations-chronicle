@@ -1366,41 +1366,32 @@ Yoga serves GraphiQL at `http://localhost:4000/graphql` in development.
 
 ## 14. Deployment & CI/CD
 
+Implemented in the repo:
+
+| Workflow | File |
+|----------|------|
+| Web (GitHub Pages) | `.github/workflows/deploy-pages.yml` |
+| API (migrate + Fly) | `.github/workflows/deploy-api.yml` |
+
+API container: `apps/api/Dockerfile`, `apps/api/fly.toml` (build context = monorepo root).
+
 ### 14.1 GitHub Actions — API deploy
 
-```yaml
-# .github/workflows/deploy-api.yml
-name: Deploy API
-on:
-  push:
-    branches: [main]
-    paths: ['apps/api/**', 'packages/shared/**']
+On push to `main` (API/shared paths): **migrate** with `DATABASE_URL_DIRECT` → **deploy** with `FLY_API_TOKEN`.
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only --app ivc-api
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-```
+Generate token: `fly tokens create deploy -x 999999h` → GitHub secret `FLY_API_TOKEN`.
 
-Generate token: `fly tokens create deploy -x 999999h`
+First deploy still requires `fly launch --no-deploy` and `fly secrets set` locally (see README **Production setup**).
 
 ### 14.2 Pages deploy
 
-Automatic on push to `main` when Pages is connected — no Action needed unless you want preview branches.
+`.github/workflows/deploy-pages.yml` builds on `main` with repo variables `VITE_API_URL`, `VITE_WS_URL`, `VITE_CDN_URL`.
+
+Alternatively use Cloudflare Pages (§11.6) connected to the same repo — no change to the API workflow.
 
 ### 14.3 Migrations in CI
 
-```yaml
-# run before deploy
-- run: yarn workspace @ivc/api drizzle-kit migrate
-  env:
-    DATABASE_URL: ${{ secrets.DATABASE_URL_DIRECT }}
-```
+The `migrate` job in `deploy-api.yml` runs `yarn db:migrate` in `apps/api` with `DATABASE_URL_DIRECT` (falls back in `drizzle.config.ts` to `DATABASE_URL` for local use).
 
 Run migrations from CI or locally before deploy — **never** auto-migrate on server boot in production.
 

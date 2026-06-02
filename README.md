@@ -136,3 +136,78 @@ Set `PUBLIC_APP_ORIGIN` in `apps/api/.env` so pairing URLs point at your web app
 ```bash
 yarn test:import   # importChronicle MERGE + REPLACE smoke test
 ```
+
+## Production setup
+
+Full infrastructure walkthrough: [docs/SERVER_STACK_PLAN.md](docs/SERVER_STACK_PLAN.md) (§11 accounts, §14 CI/CD).
+
+### Accounts (create in order)
+
+| Service | Purpose |
+|---------|---------|
+| [GitHub](https://github.com) | Repo + Actions CI |
+| [Neon](https://neon.tech) | Postgres (`main` prod branch) |
+| [Fly.io](https://fly.io) | GraphQL API + WebSockets |
+| [Cloudflare](https://dash.cloudflare.com) | DNS, R2 images, CDN; **Pages** recommended for `app.*` |
+| [Resend](https://resend.com) | Optional sign-up email |
+
+Later (scale): [Upstash](https://upstash.com) Redis when running 2+ Fly machines.
+
+### CI/CD (GitHub Actions)
+
+| Workflow | Trigger | Deploys |
+|----------|---------|---------|
+| [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) | Push to `main` | Web → **GitHub Pages** (`apps/web/dist`) |
+| [`.github/workflows/deploy-api.yml`](.github/workflows/deploy-api.yml) | Push to `main` (API/shared paths) | Migrations → **Fly.io** (`ivc-api`) |
+
+Migrations run in CI only (not on API boot). API deploy is skipped if migrations fail.
+
+### GitHub configuration
+
+**Repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Used by |
+|--------|---------|
+| `FLY_API_TOKEN` | API deploy — `fly tokens create deploy -x 999999h` |
+| `DATABASE_URL_DIRECT` | CI migrations — Neon **direct** connection string |
+
+**Repository variables** (Settings → Secrets and variables → Actions → Variables) — for the Pages build:
+
+| Variable | Example |
+|----------|---------|
+| `VITE_API_URL` | `https://api.yourdomain.com/graphql` |
+| `VITE_WS_URL` | `wss://api.yourdomain.com/graphql` |
+| `VITE_CDN_URL` | `https://cdn.yourdomain.com` |
+
+Enable **GitHub Pages** (Settings → Pages → Source: GitHub Actions) if you use the included web workflow. Vite `base` is `/interactive-vacations-chronicle/` for project Pages; use `base: '/'` and [Cloudflare Pages](https://developers.cloudflare.com/pages/) for a custom domain (`app.yourdomain.com`) — see SERVER_STACK_PLAN §11.6.
+
+### First-time API on Fly.io
+
+```bash
+cd apps/api
+fly auth login
+fly launch --no-deploy    # name: ivc-api, region near Neon (e.g. iad)
+fly secrets set \
+  DATABASE_URL="postgresql://...?sslmode=require" \
+  SESSION_SECRET="$(openssl rand -hex 32)" \
+  JWT_SECRET="$(openssl rand -hex 32)" \
+  CORS_ORIGIN="https://app.yourdomain.com" \
+  PUBLIC_APP_ORIGIN="https://app.yourdomain.com" \
+  STORAGE_PUBLIC_BASE_URL="https://cdn.yourdomain.com" \
+  R2_ACCESS_KEY_ID="..." R2_SECRET_ACCESS_KEY="..." \
+  R2_ENDPOINT="https://<account>.r2.cloudflarestorage.com" \
+  R2_BUCKET="ivc-images"
+fly certs add api.yourdomain.com
+```
+
+Add `DATABASE_URL_DIRECT` to GitHub secrets, then push to `main` (or `fly deploy` from `apps/api`). Verify: `curl https://api.yourdomain.com/health`.
+
+### DNS (Cloudflare)
+
+| Host | Target |
+|------|--------|
+| `app` | Cloudflare Pages or GitHub Pages |
+| `api` | `ivc-api.fly.dev` |
+| `cdn` | R2 custom domain |
+
+See `apps/api/.env.example` for all API env vars.

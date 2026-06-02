@@ -32,6 +32,10 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+          VITE_CDN_URL: ${{ vars.VITE_CDN_URL }}
         run: yarn build
 
       - name: Setup Pages
