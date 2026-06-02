@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ivc
+      POSTGRES_PASSWORD: ivc_dev
+      POSTGRES_DB: ivc_dev
+    volumes:
+      - ivc_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ivc -d ivc_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ivc_pg_data:

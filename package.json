@@ -17,6 +17,11 @@
     "build:api": "yarn build:shared && yarn workspace @ivc/api build",
     "lint": "yarn workspace @ivc/shared lint && yarn workspace @ivc/web lint && yarn workspace @ivc/api lint",
     "preview": "yarn workspace @ivc/web preview",
-    "build:map": "node scripts/build-world-map-svg.mjs"
+    "build:map": "node scripts/build-world-map-svg.mjs",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "yarn workspace @ivc/api db:migrate",
+    "db:generate": "yarn workspace @ivc/api db:generate",
+    "test:smoke": "yarn workspace @ivc/api test:smoke"
   }
 }

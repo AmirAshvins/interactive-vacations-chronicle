@@ -848,13 +848,14 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 1 — API + DB + auth (1–2 weeks)
 
-- [ ] Neon dev branch + Drizzle schema + migrations
-- [ ] Lucia auth: signUp, signIn, signOut, refresh
-- [ ] GraphQL: `me`, `createTravelogue`, `travelogue` query
-- [ ] Trip CRUD mutations (no images yet)
-- [ ] Basic integration test: create user → travelogue → trip
+- [x] Drizzle schema + migrations (`apps/api/drizzle/`)
+- [x] Local Postgres via `docker-compose.yml`
+- [x] Lucia auth: signUp, signIn, signOut, refreshAccessToken
+- [x] GraphQL Yoga: `me`, `createTravelogue`, `travelogue` query
+- [x] Trip CRUD mutations (no images yet)
+- [x] Smoke test script (`yarn test:smoke`)
 
-**Exit criteria:** Postman/GraphiQL can manage trips without the web app.
+**Exit criteria:** Postman/GraphiQL or `yarn test:smoke` can manage trips. Requires `yarn db:up && yarn db:migrate`.
 
 ---
 

@@ -28,6 +28,9 @@ Phone is not a “companion only” client. QR pairing is an optional workflow w
 | `yarn dev` | Web dev server (alias for `dev:web`) |
 | `yarn dev:web` | Web app only |
 | `yarn dev:api` | API stub server (port 4000) |
+| `yarn db:up` | Start local Postgres (Docker) |
+| `yarn db:migrate` | Apply Drizzle migrations |
+| `yarn test:smoke` | API integration smoke test (API must be running) |
 | `yarn build` | Production build |
 | `yarn preview` | Preview production build |
 | `yarn lint` | ESLint |
@@ -61,3 +64,14 @@ Sample family routes live under `src/data/chronicleTemplates/`. Import from the 
 Without a TV, use the phone or desktop app directly for everything.
 
 See [docs/ENVIRONMENT_UX.md](docs/ENVIRONMENT_UX.md) for layout and interaction details, and [docs/SERVER_STACK_PLAN.md](docs/SERVER_STACK_PLAN.md) for the backend implementation plan.
+
+### API (Phase 1 — local)
+
+```bash
+cp apps/api/.env.example apps/api/.env   # edit secrets if needed
+yarn db:up                              # Docker Postgres
+yarn db:migrate
+yarn dev:api                            # http://localhost:4000/graphql (GraphiQL in dev)
+# another terminal:
+yarn test:smoke
+```
