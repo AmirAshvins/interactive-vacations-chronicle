@@ -861,13 +861,13 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 2 — Web auth + travelogue management (1 week)
 
-- [ ] Login/signup pages
-- [ ] `/travelogues` list + create + delete
-- [ ] Route `/t/:id` loads server data into existing map UI (**phone + desktop** — mobile layout unchanged)
-- [ ] `useSyncedTravelogueStore` replaces local-only store when logged in
-- [ ] Guest mode: local IndexedDB fallback when logged out (optional)
+- [x] Login/signup pages
+- [x] `/travelogues` list + create + delete
+- [x] Route `/t/:id` loads server data into existing map UI (**phone + desktop** — mobile layout unchanged)
+- [x] `useSyncedTravelogueStore` replaces local-only store when logged in
+- [x] Guest mode: `/guest` uses IndexedDB offline fallback
 
-**Exit criteria:** Logged-in user edits trips on **phone and desktop**; data persists after refresh. No TV required.
+**Exit criteria:** Logged-in user edits trips on **phone and desktop**; data persists after refresh. No TV required. ✅
 
 ---
 

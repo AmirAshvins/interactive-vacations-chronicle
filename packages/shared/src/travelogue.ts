@@ -13,6 +13,8 @@ export interface Trip {
   endMonth?: number;
   /** References blobs in IndexedDB `images` store — not inlined on the trip record */
   imageIds: string[];
+  /** Server LWW version; present when synced from API */
+  version?: number;
 }
 
 export interface FlightRoute {

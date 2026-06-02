@@ -72,6 +72,17 @@ cp apps/api/.env.example apps/api/.env   # edit secrets if needed
 yarn db:up                              # Docker Postgres
 yarn db:migrate
 yarn dev:api                            # http://localhost:4000/graphql (GraphiQL in dev)
-# another terminal:
-yarn test:smoke
 ```
+
+### Web + API (Phase 2 — local)
+
+```bash
+# Terminal 1 — API (see above)
+yarn dev:api
+
+# Terminal 2 — web
+cp apps/web/.env.example apps/web/.env
+yarn dev:web                            # http://localhost:5173
+```
+
+Sign up at `/signup`, create a travelogue, open the map at `/t/:id`. Offline-only: `/guest`.
