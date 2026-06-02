@@ -1,8 +1,11 @@
+import type { Database } from '../db/index.js';
 import type { trips as tripsTable } from '../db/schema.js';
+import { getAttachedImageUrlsForTrip, getAttachedImageUrlsForTrips } from '../services/images.js';
 
 type TripRow = typeof tripsTable.$inferSelect;
 
-export function mapTripToGraphql(trip: TripRow) {
+export async function mapTripToGraphql(db: Database, trip: TripRow) {
+  const imageUrls = await getAttachedImageUrlsForTrip(db, trip.id);
   return {
     id: trip.id,
     countryCode: trip.countryCode,
@@ -17,9 +20,33 @@ export function mapTripToGraphql(trip: TripRow) {
     endYear: trip.endYear,
     endMonth: trip.endMonth,
     version: trip.version,
-    imageUrls: [] as string[],
+    imageUrls,
     updatedAt: trip.updatedAt.toISOString(),
   };
+}
+
+export async function mapTripsToGraphql(db: Database, tripRows: TripRow[]) {
+  const urlsByTrip = await getAttachedImageUrlsForTrips(
+    db,
+    tripRows.map((t) => t.id),
+  );
+  return tripRows.map((trip) => ({
+    id: trip.id,
+    countryCode: trip.countryCode,
+    cityKey: trip.cityKey,
+    name: trip.name,
+    lat: trip.lat,
+    lng: trip.lng,
+    description: trip.description,
+    material: trip.material as 'brass' | 'copper',
+    startYear: trip.startYear,
+    startMonth: trip.startMonth,
+    endYear: trip.endYear,
+    endMonth: trip.endMonth,
+    version: trip.version,
+    imageUrls: urlsByTrip.get(trip.id) ?? [],
+    updatedAt: trip.updatedAt.toISOString(),
+  }));
 }
 
 export function mapTravelogueToGraphql(
@@ -31,7 +58,7 @@ export function mapTravelogueToGraphql(
     version: number;
     updatedAt: Date;
   },
-  tripRows: TripRow[],
+  tripGql: Awaited<ReturnType<typeof mapTripsToGraphql>>,
 ) {
   return {
     id: travelogue.id,
@@ -39,7 +66,7 @@ export function mapTravelogueToGraphql(
     homeCityKey: travelogue.homeCityKey,
     mapSettings: travelogue.mapSettings,
     version: travelogue.version,
-    trips: tripRows.map(mapTripToGraphql),
+    trips: tripGql,
     updatedAt: travelogue.updatedAt.toISOString(),
   };
 }

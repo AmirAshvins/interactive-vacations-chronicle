@@ -195,6 +195,39 @@ export const DELETE_TRIP = /* GraphQL */ `
   }
 `;
 
+export const REQUEST_IMAGE_UPLOAD = /* GraphQL */ `
+  mutation RequestImageUpload($tripId: ID!, $mimeType: String!, $sizeBytes: Int!) {
+    requestImageUpload(tripId: $tripId, mimeType: $mimeType, sizeBytes: $sizeBytes) {
+      imageId
+      uploadUrl
+      publicUrl
+      expiresAt
+    }
+  }
+`;
+
+export const ATTACH_IMAGE = /* GraphQL */ `
+  mutation AttachImage($tripId: ID!, $imageId: ID!, $clientMutationId: String!) {
+    attachImage(tripId: $tripId, imageId: $imageId, clientMutationId: $clientMutationId) {
+      id
+      version
+      imageUrls
+      updatedAt
+    }
+  }
+`;
+
+export const DETACH_IMAGE = /* GraphQL */ `
+  mutation DetachImage($tripId: ID!, $imageId: ID!, $clientMutationId: String!) {
+    detachImage(tripId: $tripId, imageId: $imageId, clientMutationId: $clientMutationId) {
+      id
+      version
+      imageUrls
+      updatedAt
+    }
+  }
+`;
+
 export const TRAVELOGUE_UPDATED = /* GraphQL */ `
   subscription TravelogueUpdated($travelogueId: ID!) {
     travelogueUpdated(travelogueId: $travelogueId) {

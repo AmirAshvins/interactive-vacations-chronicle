@@ -3,8 +3,9 @@ import { getDb } from './travelogueDb';
 export interface StoredImage {
   id: string;
   tripId: string;
-  blob: Blob;
+  blob?: Blob;
   mimeType: string;
+  remoteUrl?: string;
 }
 
 const urlCache = new Map<string, string>();
@@ -32,6 +33,39 @@ export async function saveImagesForTrip(tripId: string, blobs: Blob[]): Promise<
   return ids;
 }
 
+export async function saveImageBlob(
+  id: string,
+  tripId: string,
+  blob: Blob,
+  mimeType = blob.type || 'image/jpeg',
+): Promise<void> {
+  const db = await getDb();
+  const existing = await db.get('images', id);
+  await db.put('images', {
+    id,
+    tripId,
+    blob,
+    mimeType,
+    remoteUrl: existing?.remoteUrl,
+  });
+}
+
+export async function saveRemoteImageMeta(
+  id: string,
+  tripId: string,
+  remoteUrl: string,
+): Promise<void> {
+  const db = await getDb();
+  const existing = await db.get('images', id);
+  await db.put('images', {
+    id,
+    tripId,
+    blob: existing?.blob,
+    mimeType: existing?.mimeType ?? 'image/jpeg',
+    remoteUrl,
+  });
+}
+
 export async function deleteImages(imageIds: string[]): Promise<void> {
   if (!imageIds.length) return;
   const db = await getDb();
@@ -49,20 +83,56 @@ export async function deleteImagesForTrip(tripId: string): Promise<void> {
   await deleteImages(all.map((img) => img.id));
 }
 
-export async function getImageBlob(id: string): Promise<Blob | null> {
+export async function getImageRecord(id: string): Promise<StoredImage | null> {
   const db = await getDb();
   const record = await db.get('images', id);
+  return record ?? null;
+}
+
+export async function getImageBlob(id: string): Promise<Blob | null> {
+  const record = await getImageRecord(id);
   return record?.blob ?? null;
+}
+
+async function fetchAndCacheRemote(id: string, remoteUrl: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(remoteUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const record = await getImageRecord(id);
+    if (record) {
+      await saveImageBlob(id, record.tripId, blob, blob.type || record.mimeType);
+    }
+    return blob;
+  } catch {
+    return null;
+  }
 }
 
 export async function getImageObjectUrl(id: string): Promise<string | null> {
   const cached = urlCache.get(id);
   if (cached) return cached;
-  const blob = await getImageBlob(id);
-  if (!blob) return null;
-  const url = URL.createObjectURL(blob);
-  urlCache.set(id, url);
-  return url;
+
+  const record = await getImageRecord(id);
+  if (!record) return null;
+
+  if (record.blob) {
+    const url = URL.createObjectURL(record.blob);
+    urlCache.set(id, url);
+    return url;
+  }
+
+  if (record.remoteUrl) {
+    const blob = await fetchAndCacheRemote(id, record.remoteUrl);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      urlCache.set(id, url);
+      return url;
+    }
+    return record.remoteUrl;
+  }
+
+  return null;
 }
 
 export async function resolveImageIdsToDataUrls(imageIds: string[]): Promise<string[]> {
@@ -92,17 +162,17 @@ export async function clearAllImages(): Promise<void> {
 
 export function revokeImageUrl(id: string): void {
   const url = urlCache.get(id);
-  if (url) {
+  if (url && url.startsWith('blob:')) {
     URL.revokeObjectURL(url);
-    urlCache.delete(id);
   }
+  urlCache.delete(id);
 }
 
 export function revokeAllImageUrls(): void {
-  for (const url of urlCache.values()) {
-    URL.revokeObjectURL(url);
+  for (const [id, url] of urlCache.entries()) {
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    urlCache.delete(id);
   }
-  urlCache.clear();
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {

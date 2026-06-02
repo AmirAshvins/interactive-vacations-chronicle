@@ -886,12 +886,15 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 4 — Images + R2 (1 week)
 
-- [ ] R2 bucket + CDN domain
-- [ ] Presigned upload mutations
-- [ ] Wire `TripDialog` / `ImageCarousel` to upload pipeline
-- [ ] IndexedDB image cache by server id
+- [x] `requestImageUpload` / `attachImage` / `detachImage` mutations
+- [x] R2 presigned PUT (or local dev storage at `/storage/put` + `/storage/media`)
+- [x] Web upload pipeline wired through `useSyncedTravelogueStore`
+- [x] IndexedDB cache by server image id + remote URL fetch
+- [ ] R2 bucket + CDN domain (production — configure env vars)
 
 **Exit criteria:** Photo uploaded on phone appears on second device.
+
+**Verify:** `yarn dev:api` then `yarn test:image`. Two tabs on same trip should show photos after attach (subscription `UPDATED`).
 
 ---
 

@@ -1,0 +1,1 @@
+ALTER TABLE "trip_images" ADD COLUMN "attached_at" timestamp with time zone;

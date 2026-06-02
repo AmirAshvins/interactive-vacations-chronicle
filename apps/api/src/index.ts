@@ -7,6 +7,8 @@ import { createContextFactory, createWsContext } from './context.js';
 import { env } from './env.js';
 import { graphqlPlugins, schema } from './graphql/schema.js';
 import { verifyAccessToken } from './auth/jwt.js';
+import { handleStorageRequest } from './http/storageRoutes.js';
+import { getStorage } from './services/storage/index.js';
 
 const yoga = createYoga({
   schema,
@@ -31,9 +33,10 @@ const httpServer = createServer((req, res) => {
         JSON.stringify({
           ok: dbOk,
           service: '@ivc/api',
-          phase: '3',
+          phase: '4',
           graphql: true,
           subscriptions: true,
+          storage: getStorage().mode,
           database: dbOk ? 'connected' : 'unavailable',
         }),
       );
@@ -41,7 +44,10 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
-  yoga(req, res);
+  void handleStorageRequest(req, res, url).then((handled) => {
+    if (handled) return;
+    yoga(req, res);
+  });
 });
 
 const wsServer = new WebSocketServer({
@@ -70,6 +76,7 @@ httpServer.listen(env.PORT, () => {
   console.log(`  health   GET  /health`);
   console.log(`  graphql  POST /graphql`);
   console.log(`  graphql  WS   /graphql (subscriptions)`);
+  console.log(`  storage  ${getStorage().mode} → ${env.storagePublicBaseUrl}`);
   if (env.NODE_ENV !== 'production') {
     console.log(`  graphiql GET  /graphql`);
   }

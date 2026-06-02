@@ -7,12 +7,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+apps/api/.data
+.data
 node_modules
 dist
 dist-ssr
 .env
 .env.*
 !.env.example
+
+# Local API image storage (Phase 4 dev)
+.data/
 
 # Editor directories and files
 .vscode/*

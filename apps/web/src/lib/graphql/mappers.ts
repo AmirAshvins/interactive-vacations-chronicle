@@ -1,4 +1,6 @@
 import type { MapDisplaySettings, Trip } from '../../types/travelogue';
+import { imageIdsFromPublicUrls } from './imageUrls';
+import { syncTripImageCache } from './syncImageCache';
 
 export interface ServerTrip {
   id: string;
@@ -32,9 +34,14 @@ export function serverTripToTrip(t: ServerTrip): Trip {
     startMonth: t.startMonth ?? undefined,
     endYear: t.endYear ?? undefined,
     endMonth: t.endMonth ?? undefined,
-    imageIds: [],
+    imageIds: imageIdsFromPublicUrls(t.imageUrls),
     version: t.version,
   };
+}
+
+export async function serverTripToTripWithCache(t: ServerTrip): Promise<Trip> {
+  await syncTripImageCache(t);
+  return serverTripToTrip(t);
 }
 
 export function tripToInput(trip: Trip) {

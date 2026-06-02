@@ -14,8 +14,9 @@ const META_INITIALIZED = 'initialized';
 export interface StoredImageRecord {
   id: string;
   tripId: string;
-  blob: Blob;
+  blob?: Blob;
   mimeType: string;
+  remoteUrl?: string;
 }
 
 interface TravelogueDB extends DBSchema {

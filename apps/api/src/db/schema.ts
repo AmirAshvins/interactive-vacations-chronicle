@@ -95,6 +95,7 @@ export const tripImages = pgTable('trip_images', {
   width: integer('width'),
   height: integer('height'),
   sortOrder: integer('sort_order').notNull().default(0),
+  attachedAt: timestamp('attached_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

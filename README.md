@@ -97,3 +97,13 @@ yarn test:subscription   # with yarn dev:api running
 ```
 
 Open the same `/t/:id` in two tabs; edits in one tab should appear in the other within about a second.
+
+### Images (Phase 4)
+
+Trip photos upload via presigned PUT (Cloudflare R2 in production, local disk in dev). The API serves dev files at `http://localhost:4000/storage/media/...`.
+
+```bash
+yarn test:image   # with yarn dev:api running
+```
+
+Set `R2_*` and `STORAGE_PUBLIC_BASE_URL` in `apps/api/.env` for production. Without R2 vars, uploads use `.data/ivc-uploads` automatically.

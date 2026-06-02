@@ -61,6 +61,13 @@ export const typeDefs = /* GraphQL */ `
     updatedAt: DateTime!
   }
 
+  type ImageUploadRequest {
+    imageId: ID!
+    uploadUrl: String!
+    publicUrl: String!
+    expiresAt: DateTime!
+  }
+
   type AuthPayload {
     user: User!
     accessToken: String!
@@ -103,6 +110,10 @@ export const typeDefs = /* GraphQL */ `
     createTrip(travelogueId: ID!, input: TripInput!, clientMutationId: String!): Trip!
     updateTrip(id: ID!, input: TripInput!, baseVersion: Int!, clientMutationId: String!): Trip!
     deleteTrip(id: ID!, baseVersion: Int!, clientMutationId: String!): Boolean!
+
+    requestImageUpload(tripId: ID!, mimeType: String!, sizeBytes: Int!): ImageUploadRequest!
+    attachImage(tripId: ID!, imageId: ID!, clientMutationId: String!): Trip!
+    detachImage(tripId: ID!, imageId: ID!, clientMutationId: String!): Trip!
   }
 
   type Subscription {

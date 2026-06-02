@@ -5,6 +5,7 @@ import { requireAuth } from '../lib/errors.js';
 import * as authService from '../services/auth.js';
 import * as travelogueService from '../services/travelogue.js';
 import * as tripService from '../services/trip.js';
+import * as imageService from '../services/images.js';
 import * as syncPublish from '../services/syncPublish.js';
 import { traveloguePubSub } from '../pubsub/travelogue.js';
 import { getMemberRole, requireRole } from '../services/travelogue.js';
@@ -12,6 +13,7 @@ import {
   mapTravelogueSummaryToGraphql,
   mapTravelogueToGraphql,
   mapTripToGraphql,
+  mapTripsToGraphql,
   mapUserToGraphql,
 } from './mappers.js';
 
@@ -34,6 +36,10 @@ const DateTimeScalar = new GraphQLScalarType({
 
 export const resolvers = {
   DateTime: DateTimeScalar,
+
+  ImageUploadRequest: {
+    expiresAt: (parent: { expiresAt: Date }) => parent.expiresAt.toISOString(),
+  },
 
   User: {
     travelogues: async (parent: { id: string }, _args: unknown, ctx: AppContext) => {
@@ -59,7 +65,8 @@ export const resolvers = {
         args.id,
         userId,
       );
-      return mapTravelogueToGraphql(travelogue, trips);
+      const tripGql = await mapTripsToGraphql(ctx.db, trips);
+      return mapTravelogueToGraphql(travelogue, tripGql);
     },
   },
 
@@ -125,7 +132,8 @@ export const resolvers = {
         mapSettings: args.mapSettings,
       });
       const { trips } = await travelogueService.getTravelogueById(ctx.db, args.id, userId);
-      return mapTravelogueToGraphql(updated, trips);
+      const tripGql = await mapTripsToGraphql(ctx.db, trips);
+      return mapTravelogueToGraphql(updated, tripGql);
     },
 
     deleteTravelogue: async (_parent: unknown, args: { id: string }, ctx: AppContext) => {
@@ -147,8 +155,8 @@ export const resolvers = {
       const userId = getUserId(ctx);
       requireAuth(userId);
       const trip = await tripService.createTrip(ctx.db, args.travelogueId, userId, args.input);
-      const gqlTrip = mapTripToGraphql(trip);
-      syncPublish.publishTripCreated(args.travelogueId, trip);
+      const gqlTrip = await mapTripToGraphql(ctx.db, trip);
+      await syncPublish.publishTripCreated(ctx.db, args.travelogueId, trip);
       return gqlTrip;
     },
 
@@ -172,8 +180,8 @@ export const resolvers = {
         args.baseVersion,
         args.input,
       );
-      const gqlTrip = mapTripToGraphql(trip);
-      syncPublish.publishTripUpdated(trip.travelogueId, trip);
+      const gqlTrip = await mapTripToGraphql(ctx.db, trip);
+      await syncPublish.publishTripUpdated(ctx.db, trip.travelogueId, trip);
       return gqlTrip;
     },
 
@@ -188,6 +196,51 @@ export const resolvers = {
       const deleted = await tripService.deleteTrip(ctx.db, args.id, userId, args.baseVersion);
       syncPublish.publishTripDeleted(deleted.travelogueId, deleted.tripId, deleted.version);
       return true;
+    },
+
+    requestImageUpload: async (
+      _parent: unknown,
+      args: { tripId: string; mimeType: string; sizeBytes: number },
+      ctx: AppContext,
+    ) => {
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      const result = await imageService.requestImageUpload(
+        ctx.db,
+        args.tripId,
+        userId,
+        args.mimeType,
+        args.sizeBytes,
+      );
+      return result;
+    },
+
+    attachImage: async (
+      _parent: unknown,
+      args: { tripId: string; imageId: string; clientMutationId: string },
+      ctx: AppContext,
+    ) => {
+      void args.clientMutationId;
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      const trip = await imageService.attachImage(ctx.db, args.tripId, args.imageId, userId);
+      const gqlTrip = await mapTripToGraphql(ctx.db, trip);
+      await syncPublish.publishTripUpdated(ctx.db, trip.travelogueId, trip);
+      return gqlTrip;
+    },
+
+    detachImage: async (
+      _parent: unknown,
+      args: { tripId: string; imageId: string; clientMutationId: string },
+      ctx: AppContext,
+    ) => {
+      void args.clientMutationId;
+      const userId = getUserId(ctx);
+      requireAuth(userId);
+      const trip = await imageService.detachImage(ctx.db, args.tripId, args.imageId, userId);
+      const gqlTrip = await mapTripToGraphql(ctx.db, trip);
+      await syncPublish.publishTripUpdated(ctx.db, trip.travelogueId, trip);
+      return gqlTrip;
     },
   },
 

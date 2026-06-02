@@ -1,3 +1,4 @@
+import type { Database } from '../db/index.js';
 import type { trips as tripsTable } from '../db/schema.js';
 import { mapTripToGraphql } from '../graphql/mappers.js';
 import { traveloguePubSub } from '../pubsub/travelogue.js';
@@ -8,21 +9,21 @@ function publish(travelogueId: string, payload: import('../pubsub/travelogue.js'
   traveloguePubSub.publish('travelogue-updated', travelogueId, payload);
 }
 
-export function publishTripCreated(travelogueId: string, trip: TripRow) {
+export async function publishTripCreated(db: Database, travelogueId: string, trip: TripRow) {
   publish(travelogueId, {
     op: 'CREATED',
     tripId: trip.id,
     version: trip.version,
-    trip: mapTripToGraphql(trip),
+    trip: await mapTripToGraphql(db, trip),
   });
 }
 
-export function publishTripUpdated(travelogueId: string, trip: TripRow) {
+export async function publishTripUpdated(db: Database, travelogueId: string, trip: TripRow) {
   publish(travelogueId, {
     op: 'UPDATED',
     tripId: trip.id,
     version: trip.version,
-    trip: mapTripToGraphql(trip),
+    trip: await mapTripToGraphql(db, trip),
   });
 }
 

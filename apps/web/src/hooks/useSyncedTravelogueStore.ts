@@ -4,9 +4,14 @@ import type { ImportTrip } from '../utils/chronicleTransfer';
 import { gqlRequest, GraphqlError } from '../lib/graphql/client';
 import {
   serverTripToTrip,
+  serverTripToTripWithCache,
   tripToInput,
   type ServerTrip,
 } from '../lib/graphql/mappers';
+import { syncTripsImageCache } from '../lib/graphql/syncImageCache';
+import { applySyncedImageChanges } from '../lib/graphql/uploadTripImages';
+import { deleteImages } from '../db/tripImages';
+import { isServerImageId } from '../lib/graphql/imageUrls';
 import {
   CREATE_TRIP,
   DELETE_TRIP,
@@ -56,6 +61,8 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
       };
     }>(TRAVELOGUE, { id: travelogueId }, accessToken);
 
+    await syncTripsImageCache(data.travelogue.trips);
+
     setMeta({
       id: data.travelogue.id,
       name: data.travelogue.name,
@@ -91,14 +98,17 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
   }, [accessToken, reload]);
 
   const applyRemotePatch = useCallback((patch: TripPatchMessage) => {
-    setTrips((prev) => {
-      const next = applyTripPatch(prev, patch);
-      if (patch.op === 'DELETED') return next;
-      const incomingVersion = patch.version;
-      const existing = prev.find((t) => t.id === patch.tripId);
-      if (existing && (existing.version ?? 0) >= incomingVersion) return prev;
-      return next;
-    });
+    void (async () => {
+      if (patch.trip) await syncTripsImageCache([patch.trip]);
+      setTrips((prev) => {
+        const next = applyTripPatch(prev, patch);
+        if (patch.op === 'DELETED') return next;
+        const incomingVersion = patch.version;
+        const existing = prev.find((t) => t.id === patch.tripId);
+        if (existing && (existing.version ?? 0) >= incomingVersion) return prev;
+        return next;
+      });
+    })();
   }, []);
 
   useTravelogueSubscription(travelogueId, accessToken, applyRemotePatch, ready);
@@ -106,9 +116,6 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
   const addTrip = useCallback(
     async (trip: Trip, imageChanges?: TripImageChanges) => {
       if (!accessToken) return;
-      if (imageChanges?.add.length) {
-        console.warn('Image upload to server is not available yet (Phase 4).');
-      }
 
       const data = await gqlRequest<{ createTrip: ServerTrip }>(
         CREATE_TRIP,
@@ -120,7 +127,15 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
         accessToken,
       );
 
-      const created = serverTripToTrip(data.createTrip);
+      let created = await serverTripToTripWithCache(data.createTrip);
+
+      if (imageChanges?.add.length) {
+        const afterImages = await applySyncedImageChanges(accessToken, created.id, imageChanges);
+        if (afterImages) {
+          created = await serverTripToTripWithCache(afterImages);
+        }
+      }
+
       setTrips((prev) => [...prev, created]);
     },
     [accessToken, travelogueId],
@@ -129,9 +144,6 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
   const updateTrip = useCallback(
     async (trip: Trip, imageChanges?: TripImageChanges) => {
       if (!accessToken) return;
-      if (imageChanges?.add.length) {
-        console.warn('Image upload to server is not available yet (Phase 4).');
-      }
 
       const baseVersion = trip.version ?? 1;
       try {
@@ -145,7 +157,21 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
           },
           accessToken,
         );
-        const updated = serverTripToTrip(data.updateTrip);
+
+        let updated = await serverTripToTripWithCache(data.updateTrip);
+
+        if (imageChanges?.removeIds.length) {
+          const localOnly = imageChanges.removeIds.filter((id) => !isServerImageId(id));
+          if (localOnly.length) await deleteImages(localOnly);
+        }
+
+        if (imageChanges && (imageChanges.add.length || imageChanges.removeIds.length)) {
+          const afterImages = await applySyncedImageChanges(accessToken, trip.id, imageChanges);
+          if (afterImages) {
+            updated = await serverTripToTripWithCache(afterImages);
+          }
+        }
+
         setTrips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       } catch (err) {
         if (err instanceof GraphqlError && err.code === 'CONFLICT') {
