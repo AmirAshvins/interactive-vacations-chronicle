@@ -6,6 +6,7 @@ const ZONE_LABELS: Record<string, string> = {
   map: 'Map pins',
   'panel-header': 'Panel tabs',
   chronicle: 'Chronicle list',
+  'chronicle-archive': 'Chronicle import/export',
   'trip-card': 'Journey card',
 };
 

@@ -12,9 +12,17 @@ import type { Trip } from '../types/travelogue';
 import type { PanelTab } from '../components/RightPanel';
 import { findNearestInDirection, pickInitialPinId, type SpatialDirection } from '../utils/spatialNav';
 
-export type TvZone = 'dock' | 'map' | 'panel-header' | 'chronicle' | 'trip-card';
+export type TvZone =
+  | 'dock'
+  | 'map'
+  | 'panel-header'
+  | 'chronicle'
+  | 'chronicle-archive'
+  | 'trip-card';
 
 export type TripCardFocusTarget = 'chronicle' | 'close';
+
+export type ChronicleArchiveTarget = 'export' | 'import';
 
 export interface TvFocusState {
   zone: TvZone;
@@ -22,6 +30,17 @@ export interface TvFocusState {
   chronicleIndex: number;
   panelTabIndex: number;
   tripCardTarget: TripCardFocusTarget;
+  archiveTarget: ChronicleArchiveTarget;
+}
+
+export interface TvArchiveActions {
+  onExport: () => void;
+  onOpenImport: () => void;
+}
+
+export interface TvImportDialogState {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 interface TvFocusActions {
@@ -53,10 +72,14 @@ interface TvFocusContextValue {
   isMapPinFocused: (id: string) => boolean;
   isChronicleFocused: (index: number) => boolean;
   isPanelTabFocused: (index: number) => boolean;
+  isArchiveExportFocused: boolean;
+  isArchiveImportFocused: boolean;
   isDockFocused: boolean;
   isTripCardFocused: boolean;
   tripCardTarget: TripCardFocusTarget;
   registerChronicleScroller: (fn: (index: number) => void) => void;
+  registerArchiveActions: (actions: TvArchiveActions | null) => void;
+  registerImportDialog: (state: TvImportDialogState | null) => void;
 }
 
 const TvFocusContext = createContext<TvFocusContextValue | null>(null);
@@ -67,6 +90,7 @@ const INITIAL_STATE: TvFocusState = {
   chronicleIndex: 0,
   panelTabIndex: 0,
   tripCardTarget: 'chronicle',
+  archiveTarget: 'export',
 };
 
 function isBackKey(key: string): boolean {
@@ -106,10 +130,22 @@ export function TvFocusProvider({
 }: TvFocusProviderProps) {
   const [state, setState] = useState<TvFocusState>(INITIAL_STATE);
   const chronicleScrollRef = useRef<((index: number) => void) | null>(null);
+  const archiveActionsRef = useRef<TvArchiveActions | null>(null);
+  const importDialogRef = useRef<TvImportDialogState | null>(null);
 
   const registerChronicleScroller = useCallback((fn: (index: number) => void) => {
     chronicleScrollRef.current = fn;
   }, []);
+
+  const registerArchiveActions = useCallback((actions: TvArchiveActions | null) => {
+    archiveActionsRef.current = actions;
+  }, []);
+
+  const registerImportDialog = useCallback((dialog: TvImportDialogState | null) => {
+    importDialogRef.current = dialog;
+  }, []);
+
+  const isImportDialogOpen = () => importDialogRef.current?.isOpen ?? false;
 
   const ensureMapPin = useCallback(
     (pinId: string | null): string | null => {
@@ -133,12 +169,18 @@ export function TvFocusProvider({
   }, [enabled, state.zone, state.chronicleIndex]);
 
   const goBack = useCallback(() => {
+    if (isImportDialogOpen()) {
+      importDialogRef.current?.onClose();
+      onResetIdle();
+      return;
+    }
+
     setState((prev) => {
       if (prev.zone === 'trip-card') {
         if (topTripCardId) onCloseTrip(topTripCardId);
         return { ...prev, zone: 'map' };
       }
-      if (prev.zone === 'chronicle' || prev.zone === 'panel-header') {
+      if (prev.zone === 'chronicle' || prev.zone === 'chronicle-archive' || prev.zone === 'panel-header') {
         onClosePanel();
         return { ...prev, zone: 'map', panelTabIndex: 0 };
       }
@@ -158,6 +200,8 @@ export function TvFocusProvider({
 
   const handleArrow = useCallback(
     (direction: SpatialDirection) => {
+      if (isImportDialogOpen()) return;
+
       setState((prev) => {
         onResetIdle();
 
@@ -246,6 +290,13 @@ export function TvFocusProvider({
             onClosePanel();
             return { ...prev, zone: 'map' };
           }
+          if (direction === 'down') {
+            const atLastRow =
+              chronicleCount === 0 || prev.chronicleIndex >= chronicleCount - 1;
+            if (atLastRow) {
+              return { ...prev, zone: 'chronicle-archive', archiveTarget: 'export' };
+            }
+          }
           let nextIndex = prev.chronicleIndex;
           if (direction === 'up') {
             nextIndex = Math.max(0, prev.chronicleIndex - 1);
@@ -257,6 +308,34 @@ export function TvFocusProvider({
           }
           if (nextIndex !== prev.chronicleIndex) {
             return { ...prev, chronicleIndex: nextIndex };
+          }
+          return prev;
+        }
+
+        if (prev.zone === 'chronicle-archive') {
+          if (direction === 'left') {
+            onClosePanel();
+            return { ...prev, zone: 'map' };
+          }
+          if (direction === 'up') {
+            if (prev.archiveTarget === 'import') {
+              return { ...prev, archiveTarget: 'export' };
+            }
+            return {
+              ...prev,
+              zone: 'chronicle',
+              chronicleIndex: Math.max(0, chronicleCount - 1),
+            };
+          }
+          if (direction === 'down') {
+            if (prev.archiveTarget === 'export') {
+              return { ...prev, archiveTarget: 'import' };
+            }
+            return prev;
+          }
+          if (direction === 'right') {
+            onPanelTabChange('settings');
+            return { ...prev, zone: 'panel-header', panelTabIndex: 1 };
           }
           return prev;
         }
@@ -293,6 +372,8 @@ export function TvFocusProvider({
   );
 
   const handleActivate = useCallback(() => {
+    if (isImportDialogOpen()) return;
+
     onResetIdle();
 
     if (state.zone === 'dock') {
@@ -341,6 +422,15 @@ export function TvFocusProvider({
           mapPinId: trip.id,
           tripCardTarget: 'chronicle',
         }));
+      }
+      return;
+    }
+
+    if (state.zone === 'chronicle-archive') {
+      if (state.archiveTarget === 'export') {
+        archiveActionsRef.current?.onExport();
+      } else {
+        archiveActionsRef.current?.onOpenImport();
       }
       return;
     }
@@ -419,12 +509,18 @@ export function TvFocusProvider({
       isMapPinFocused: (id) => enabled && state.zone === 'map' && state.mapPinId === id,
       isChronicleFocused: (index) => enabled && state.zone === 'chronicle' && state.chronicleIndex === index,
       isPanelTabFocused: (index) => enabled && state.zone === 'panel-header' && state.panelTabIndex === index,
+      isArchiveExportFocused:
+        enabled && state.zone === 'chronicle-archive' && state.archiveTarget === 'export',
+      isArchiveImportFocused:
+        enabled && state.zone === 'chronicle-archive' && state.archiveTarget === 'import',
       isDockFocused: enabled && state.zone === 'dock',
       isTripCardFocused: enabled && state.zone === 'trip-card',
       tripCardTarget: state.tripCardTarget,
       registerChronicleScroller,
+      registerArchiveActions,
+      registerImportDialog,
     }),
-    [enabled, state, registerChronicleScroller],
+    [enabled, state, registerChronicleScroller, registerArchiveActions, registerImportDialog],
   );
 
   return <TvFocusContext.Provider value={value}>{children}</TvFocusContext.Provider>;
@@ -439,10 +535,14 @@ export function useTvFocus(): TvFocusContextValue {
       isMapPinFocused: () => false,
       isChronicleFocused: () => false,
       isPanelTabFocused: () => false,
+      isArchiveExportFocused: false,
+      isArchiveImportFocused: false,
       isDockFocused: false,
       isTripCardFocused: false,
       tripCardTarget: 'chronicle',
       registerChronicleScroller: () => {},
+      registerArchiveActions: () => {},
+      registerImportDialog: () => {},
     };
   }
   return ctx;
