@@ -1,5 +1,7 @@
 export const MAP_MIN_ZOOM = 1;
 export const MAP_MAX_ZOOM = 4;
+export const MAP_ZOOM_STEP = 1.22;
+export const MAP_PAN_STEP_RATIO = 0.14;
 
 export interface MapPan {
   x: number;
@@ -59,4 +61,33 @@ export function focalFromClient(
     x: clientX - rect.left - rect.width / 2,
     y: clientY - rect.top - rect.height / 2,
   };
+}
+
+export type MapPanDirection = 'up' | 'down' | 'left' | 'right';
+
+/** Nudge the map view by a fixed fraction of the viewport (TV / on-screen controls). */
+export function stepMapPan(
+  pan: MapPan,
+  zoom: number,
+  direction: MapPanDirection,
+  containerWidth: number,
+  containerHeight: number,
+): MapPan {
+  if (zoom <= MAP_MIN_ZOOM) return { x: 0, y: 0 };
+
+  const stepX = containerWidth * MAP_PAN_STEP_RATIO;
+  const stepY = containerHeight * MAP_PAN_STEP_RATIO;
+  const next = { ...pan };
+
+  if (direction === 'left') next.x += stepX;
+  if (direction === 'right') next.x -= stepX;
+  if (direction === 'up') next.y += stepY;
+  if (direction === 'down') next.y -= stepY;
+
+  return clampMapPan(next, zoom, containerWidth, containerHeight);
+}
+
+/** Pin diameter shrinks as zoom increases so nearby cities stay separable. */
+export function getPinScreenScale(zoom: number): number {
+  return Math.max(0.32, Math.min(1, 1 / zoom));
 }

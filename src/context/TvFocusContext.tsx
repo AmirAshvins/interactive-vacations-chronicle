@@ -15,10 +15,29 @@ import { findNearestInDirection, pickInitialPinId, type SpatialDirection } from 
 export type TvZone =
   | 'dock'
   | 'map'
+  | 'map-controls'
   | 'panel-header'
   | 'chronicle'
   | 'chronicle-archive'
   | 'trip-card';
+
+export type MapControlTarget =
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'pan-up'
+  | 'pan-down'
+  | 'pan-left'
+  | 'pan-right'
+  | 'reset'
+  | 'close-cards';
+
+export interface MapViewportActions {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  pan: (direction: 'up' | 'down' | 'left' | 'right') => void;
+  reset: () => void;
+  closeAll: () => void;
+}
 
 export type TripCardFocusTarget = 'chronicle' | 'close';
 
@@ -27,11 +46,26 @@ export type ChronicleArchiveTarget = 'export' | 'import';
 export interface TvFocusState {
   zone: TvZone;
   mapPinId: string | null;
+  mapControlTarget: MapControlTarget;
   chronicleIndex: number;
   panelTabIndex: number;
   tripCardTarget: TripCardFocusTarget;
   archiveTarget: ChronicleArchiveTarget;
 }
+
+const MAP_CONTROL_NEIGHBORS: Record<
+  MapControlTarget,
+  Partial<Record<SpatialDirection, MapControlTarget>>
+> = {
+  'zoom-in': { down: 'pan-up' },
+  'pan-up': { up: 'zoom-in', down: 'pan-down', left: 'pan-left', right: 'pan-right' },
+  'pan-down': { up: 'pan-up', down: 'zoom-out' },
+  'pan-left': { right: 'pan-up', up: 'zoom-in' },
+  'pan-right': { left: 'pan-up', up: 'zoom-in' },
+  'zoom-out': { up: 'pan-down', down: 'reset' },
+  reset: { up: 'zoom-out', right: 'close-cards', left: 'pan-left' },
+  'close-cards': { up: 'zoom-out', left: 'reset' },
+};
 
 export interface TvArchiveActions {
   onExport: () => void;
@@ -77,9 +111,12 @@ interface TvFocusContextValue {
   isDockFocused: boolean;
   isTripCardFocused: boolean;
   tripCardTarget: TripCardFocusTarget;
+  mapControlTarget: MapControlTarget;
+  isMapControlFocused: (target: MapControlTarget) => boolean;
   registerChronicleScroller: (fn: (index: number) => void) => void;
   registerArchiveActions: (actions: TvArchiveActions | null) => void;
   registerImportDialog: (state: TvImportDialogState | null) => void;
+  registerMapViewportActions: (actions: MapViewportActions | null) => void;
 }
 
 const TvFocusContext = createContext<TvFocusContextValue | null>(null);
@@ -87,6 +124,7 @@ const TvFocusContext = createContext<TvFocusContextValue | null>(null);
 const INITIAL_STATE: TvFocusState = {
   zone: 'map',
   mapPinId: null,
+  mapControlTarget: 'pan-up',
   chronicleIndex: 0,
   panelTabIndex: 0,
   tripCardTarget: 'chronicle',
@@ -132,6 +170,7 @@ export function TvFocusProvider({
   const chronicleScrollRef = useRef<((index: number) => void) | null>(null);
   const archiveActionsRef = useRef<TvArchiveActions | null>(null);
   const importDialogRef = useRef<TvImportDialogState | null>(null);
+  const mapViewportActionsRef = useRef<MapViewportActions | null>(null);
 
   const registerChronicleScroller = useCallback((fn: (index: number) => void) => {
     chronicleScrollRef.current = fn;
@@ -143,6 +182,10 @@ export function TvFocusProvider({
 
   const registerImportDialog = useCallback((dialog: TvImportDialogState | null) => {
     importDialogRef.current = dialog;
+  }, []);
+
+  const registerMapViewportActions = useCallback((actions: MapViewportActions | null) => {
+    mapViewportActionsRef.current = actions;
   }, []);
 
   const isImportDialogOpen = () => importDialogRef.current?.isOpen ?? false;
@@ -187,6 +230,9 @@ export function TvFocusProvider({
       if (prev.zone === 'dock') {
         return { ...prev, zone: 'map' };
       }
+      if (prev.zone === 'map-controls') {
+        return { ...prev, zone: 'map' };
+      }
       if (openTripIds.length > 0) {
         onCloseAllTrips();
       }
@@ -219,7 +265,30 @@ export function TvFocusProvider({
           return { ...prev, zone: 'map', mapPinId: ensureMapPin(prev.mapPinId) };
         }
 
+        if (prev.zone === 'map-controls') {
+          let next = MAP_CONTROL_NEIGHBORS[prev.mapControlTarget][direction];
+          if (next === 'close-cards' && openTripIds.length === 0) {
+            next =
+              direction === 'right'
+                ? undefined
+                : direction === 'left'
+                  ? 'reset'
+                  : next;
+          }
+          if (next) {
+            return { ...prev, mapControlTarget: next };
+          }
+          if (direction === 'up') {
+            return { ...prev, zone: 'map' };
+          }
+          return prev;
+        }
+
         if (prev.zone === 'map') {
+          if (direction === 'down') {
+            return { ...prev, zone: 'map-controls', mapControlTarget: 'pan-up' };
+          }
+
           const currentId = ensureMapPin(prev.mapPinId);
           if (!currentId) return prev;
 
@@ -362,6 +431,7 @@ export function TvFocusProvider({
       pinPositions,
       panelTab,
       chronicleCount,
+      openTripIds.length,
       ensureMapPin,
       onOpenPanel,
       onClosePanel,
@@ -397,6 +467,41 @@ export function TvFocusProvider({
           mapPinId: pinId,
           tripCardTarget: 'chronicle',
         }));
+      }
+      return;
+    }
+
+    if (state.zone === 'map-controls') {
+      const actions = mapViewportActionsRef.current;
+      if (!actions) return;
+      switch (state.mapControlTarget) {
+        case 'zoom-in':
+          actions.zoomIn();
+          break;
+        case 'zoom-out':
+          actions.zoomOut();
+          break;
+        case 'pan-up':
+          actions.pan('up');
+          break;
+        case 'pan-down':
+          actions.pan('down');
+          break;
+        case 'pan-left':
+          actions.pan('left');
+          break;
+        case 'pan-right':
+          actions.pan('right');
+          break;
+        case 'reset':
+          actions.reset();
+          break;
+        case 'close-cards':
+          actions.closeAll();
+          setState((s) => ({ ...s, zone: 'map' }));
+          break;
+        default:
+          break;
       }
       return;
     }
@@ -516,11 +621,22 @@ export function TvFocusProvider({
       isDockFocused: enabled && state.zone === 'dock',
       isTripCardFocused: enabled && state.zone === 'trip-card',
       tripCardTarget: state.tripCardTarget,
+      mapControlTarget: state.mapControlTarget,
+      isMapControlFocused: (target) =>
+        enabled && state.zone === 'map-controls' && state.mapControlTarget === target,
       registerChronicleScroller,
       registerArchiveActions,
       registerImportDialog,
+      registerMapViewportActions,
     }),
-    [enabled, state, registerChronicleScroller, registerArchiveActions, registerImportDialog],
+    [
+      enabled,
+      state,
+      registerChronicleScroller,
+      registerArchiveActions,
+      registerImportDialog,
+      registerMapViewportActions,
+    ],
   );
 
   return <TvFocusContext.Provider value={value}>{children}</TvFocusContext.Provider>;
@@ -540,9 +656,12 @@ export function useTvFocus(): TvFocusContextValue {
       isDockFocused: false,
       isTripCardFocused: false,
       tripCardTarget: 'chronicle',
+      mapControlTarget: 'pan-up',
+      isMapControlFocused: () => false,
       registerChronicleScroller: () => {},
       registerArchiveActions: () => {},
       registerImportDialog: () => {},
+      registerMapViewportActions: () => {},
     };
   }
   return ctx;

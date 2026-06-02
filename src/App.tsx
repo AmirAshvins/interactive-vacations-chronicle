@@ -354,6 +354,8 @@ function TravelogueApp({
         materialMode={materialMode}
         isOverlayVisible={isOverlayVisible}
         onMapClick={resetIdleTimer}
+        openTripCount={openTripIds.length}
+        onCloseAllTrips={closeAllTripPanels}
       />
 
       {solarState.phase === 'night' && (
@@ -447,7 +449,7 @@ function TravelogueApp({
         }
       />
 
-      {!panelTab &&
+      {(!panelTab || !mobileLayout) &&
         openTripIds.map((tripId) => {
           const trip = trips.find((t) => t.id === tripId);
           const layout = openTripCards[tripId];
@@ -460,6 +462,8 @@ function TravelogueApp({
             layout.offsetX,
             layout.offsetY,
           );
+          const cardZIndex =
+            !mobileLayout && panelTab ? layout.z + 24 : layout.z;
 
           return (
             <TripDetailCard
@@ -467,6 +471,7 @@ function TravelogueApp({
               trip={trip}
               layout={layout}
               position={position}
+              cardZIndex={cardZIndex}
               isDarkPhase={isDarkPhase}
               isOverlayVisible={isOverlayVisible}
               isPrimaryOpenCard={tripId === topTripCardId}

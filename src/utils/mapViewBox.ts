@@ -1,7 +1,7 @@
-/** ViewBox of public/world-map.svg */
+/** ViewBox of public/world-map.svg (equirectangular, WGS84-aligned) */
 export const MAP_VIEWBOX = {
-  minX: 30.767,
-  minY: 241.591,
+  minX: 0,
+  minY: 0,
   width: 784.077,
   height: 458.627,
 } as const;

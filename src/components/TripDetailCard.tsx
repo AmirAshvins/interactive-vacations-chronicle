@@ -16,6 +16,7 @@ interface TripDetailCardProps {
   trip: Trip;
   layout: TripCardLayout;
   position: { x: number; y: number };
+  cardZIndex?: number;
   isDarkPhase: boolean;
   isOverlayVisible: boolean;
   isPrimaryOpenCard?: boolean;
@@ -29,6 +30,7 @@ export default function TripDetailCard({
   trip,
   layout,
   position,
+  cardZIndex,
   isDarkPhase,
   isOverlayVisible,
   isPrimaryOpenCard = true,
@@ -106,8 +108,8 @@ export default function TripDetailCard({
       } ${isOverlayVisible ? 'opacity-100' : `pointer-events-none opacity-0 ${cardHiddenClass}`} ${isTvActive ? 'tv-focused-card' : ''}`}
       style={
         mobileLayout
-          ? { zIndex: layout.z }
-          : { left: position.x, top: position.y, zIndex: layout.z }
+          ? { zIndex: cardZIndex ?? layout.z }
+          : { left: position.x, top: position.y, zIndex: cardZIndex ?? layout.z }
       }
       onPointerDown={onFocus}
     >

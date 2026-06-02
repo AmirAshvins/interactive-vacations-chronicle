@@ -596,6 +596,14 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 13.375
   },
   {
+    "id": "aq-capital",
+    "name": "AQ (capital)",
+    "countryCode": "aq",
+    "lat": 0,
+    "lng": 0,
+    "isCapital": true
+  },
+  {
     "id": "buenos-aires",
     "name": "Buenos Aires",
     "countryCode": "ar",
@@ -4673,35 +4681,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": -75.8217
   },
   {
-    "id": "praia",
-    "name": "Praia",
-    "countryCode": "cv",
-    "lat": 14.9315,
-    "lng": -23.5125,
-    "isCapital": true
-  },
-  {
-    "id": "assomada",
-    "name": "Assomada",
-    "countryCode": "cv",
-    "lat": 15.1,
-    "lng": -23.6833
-  },
-  {
-    "id": "espargos",
-    "name": "Espargos",
-    "countryCode": "cv",
-    "lat": 16.7552,
-    "lng": -22.9446
-  },
-  {
-    "id": "mindelo",
-    "name": "Mindelo",
-    "countryCode": "cv",
-    "lat": 16.8901,
-    "lng": -24.9804
-  },
-  {
     "id": "nicosia",
     "name": "Nicosia",
     "countryCode": "cy",
@@ -5293,14 +5272,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "dk",
     "lat": 55.7093,
     "lng": 9.5357
-  },
-  {
-    "id": "roseau",
-    "name": "Roseau",
-    "countryCode": "dm",
-    "lat": 15.3017,
-    "lng": -61.3881,
-    "isCapital": true
   },
   {
     "id": "santo-domingo",
@@ -5994,6 +5965,34 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 31.502
   },
   {
+    "id": "boujdour",
+    "name": "Boujdour",
+    "countryCode": "eh",
+    "lat": 26.1307,
+    "lng": -14.4851
+  },
+  {
+    "id": "dakhla",
+    "name": "Dakhla",
+    "countryCode": "eh",
+    "lat": 23.6848,
+    "lng": -15.958
+  },
+  {
+    "id": "el-marsa",
+    "name": "El Marsa",
+    "countryCode": "eh",
+    "lat": 27.0961,
+    "lng": -13.4158
+  },
+  {
+    "id": "laayoune",
+    "name": "Laayoune",
+    "countryCode": "eh",
+    "lat": 27.1418,
+    "lng": -13.188
+  },
+  {
     "id": "asmara",
     "name": "Asmara",
     "countryCode": "er",
@@ -6535,6 +6534,56 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "fi",
     "lat": 60.2941,
     "lng": 25.041
+  },
+  {
+    "id": "suva",
+    "name": "Suva",
+    "countryCode": "fj",
+    "lat": -18.1368,
+    "lng": 178.4253,
+    "isCapital": true
+  },
+  {
+    "id": "labasa",
+    "name": "Labasa",
+    "countryCode": "fj",
+    "lat": -16.4332,
+    "lng": 179.3645
+  },
+  {
+    "id": "lami",
+    "name": "Lami",
+    "countryCode": "fj",
+    "lat": -18.1109,
+    "lng": 178.4094
+  },
+  {
+    "id": "lautoka",
+    "name": "Lautoka",
+    "countryCode": "fj",
+    "lat": -17.6169,
+    "lng": 177.4505
+  },
+  {
+    "id": "nadi",
+    "name": "Nadi",
+    "countryCode": "fj",
+    "lat": -17.8031,
+    "lng": 177.4162
+  },
+  {
+    "id": "nasinu",
+    "name": "Nasinu",
+    "countryCode": "fj",
+    "lat": -18.0705,
+    "lng": 178.5131
+  },
+  {
+    "id": "sigatoka",
+    "name": "Sigatoka",
+    "countryCode": "fj",
+    "lat": -18.1431,
+    "lng": 177.5069
   },
   {
     "id": "stanley",
@@ -10213,28 +10262,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 104.785
   },
   {
-    "id": "moroni",
-    "name": "Moroni",
-    "countryCode": "km",
-    "lat": -11.7022,
-    "lng": 43.2551,
-    "isCapital": true
-  },
-  {
-    "id": "fomboni",
-    "name": "Fomboni",
-    "countryCode": "km",
-    "lat": -12.2876,
-    "lng": 43.7434
-  },
-  {
-    "id": "moutsamoudou",
-    "name": "Moutsamoudou",
-    "countryCode": "km",
-    "lat": -12.1667,
-    "lng": 44.3994
-  },
-  {
     "id": "pyongyang",
     "name": "Pyongyang",
     "countryCode": "kp",
@@ -10981,21 +11008,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "lb",
     "lat": 33.8468,
     "lng": 35.902
-  },
-  {
-    "id": "castries",
-    "name": "Castries",
-    "countryCode": "lc",
-    "lat": 13.9957,
-    "lng": -61.0061,
-    "isCapital": true
-  },
-  {
-    "id": "gros-islet",
-    "name": "Gros Islet",
-    "countryCode": "lc",
-    "lat": 14.0667,
-    "lng": -60.95
   },
   {
     "id": "colombo",
@@ -12545,121 +12557,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "mr",
     "lat": 22.7354,
     "lng": -12.4713
-  },
-  {
-    "id": "valletta",
-    "name": "Valletta",
-    "countryCode": "mt",
-    "lat": 35.8997,
-    "lng": 14.5148,
-    "isCapital": true
-  },
-  {
-    "id": "birkirkara",
-    "name": "Birkirkara",
-    "countryCode": "mt",
-    "lat": 35.8971,
-    "lng": 14.4612
-  },
-  {
-    "id": "mosta",
-    "name": "Mosta",
-    "countryCode": "mt",
-    "lat": 35.9094,
-    "lng": 14.4257
-  },
-  {
-    "id": "qormi",
-    "name": "Qormi",
-    "countryCode": "mt",
-    "lat": 35.876,
-    "lng": 14.472
-  },
-  {
-    "id": "san-pawl-il-bahar",
-    "name": "San Pawl il-Bahar",
-    "countryCode": "mt",
-    "lat": 35.9506,
-    "lng": 14.4156
-  },
-  {
-    "id": "sliema",
-    "name": "Sliema",
-    "countryCode": "mt",
-    "lat": 35.9125,
-    "lng": 14.5018
-  },
-  {
-    "id": "zabbar",
-    "name": "Zabbar",
-    "countryCode": "mt",
-    "lat": 35.8769,
-    "lng": 14.5359
-  },
-  {
-    "id": "port-louis",
-    "name": "Port Louis",
-    "countryCode": "mu",
-    "lat": -20.1619,
-    "lng": 57.4989,
-    "isCapital": true
-  },
-  {
-    "id": "beau-bassin-rose-hill",
-    "name": "Beau Bassin-Rose Hill",
-    "countryCode": "mu",
-    "lat": -20.2333,
-    "lng": 57.4661
-  },
-  {
-    "id": "bel-air-riviere-seche",
-    "name": "Bel Air Riviere Seche",
-    "countryCode": "mu",
-    "lat": -20.2578,
-    "lng": 57.7498
-  },
-  {
-    "id": "curepipe",
-    "name": "Curepipe",
-    "countryCode": "mu",
-    "lat": -20.3163,
-    "lng": 57.5259
-  },
-  {
-    "id": "goodlands",
-    "name": "Goodlands",
-    "countryCode": "mu",
-    "lat": -20.0384,
-    "lng": 57.6506
-  },
-  {
-    "id": "quatre-bornes",
-    "name": "Quatre Bornes",
-    "countryCode": "mu",
-    "lat": -20.2638,
-    "lng": 57.4791
-  },
-  {
-    "id": "triolet",
-    "name": "Triolet",
-    "countryCode": "mu",
-    "lat": -20.0576,
-    "lng": 57.5503
-  },
-  {
-    "id": "vacoas",
-    "name": "Vacoas",
-    "countryCode": "mu",
-    "lat": -20.2981,
-    "lng": 57.4783
-  },
-  {
-    "id": "male",
-    "name": "Male",
-    "countryCode": "mv",
-    "lat": 4.1752,
-    "lng": 73.5092,
-    "isCapital": true
   },
   {
     "id": "lilongwe",
@@ -15574,6 +15471,146 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": -66.3877
   },
   {
+    "id": "al-birah",
+    "name": "Al Birah",
+    "countryCode": "ps",
+    "lat": 31.91,
+    "lng": 35.2165
+  },
+  {
+    "id": "an-nusayrat",
+    "name": "An Nusayrat",
+    "countryCode": "ps",
+    "lat": 31.4486,
+    "lng": 34.3925
+  },
+  {
+    "id": "battir",
+    "name": "Battir",
+    "countryCode": "ps",
+    "lat": 31.7,
+    "lng": 35.1167
+  },
+  {
+    "id": "bayt-hanun",
+    "name": "Bayt Hanun",
+    "countryCode": "ps",
+    "lat": 31.5353,
+    "lng": 34.5358
+  },
+  {
+    "id": "bayt-lahya",
+    "name": "Bayt Lahya",
+    "countryCode": "ps",
+    "lat": 31.5464,
+    "lng": 34.4951
+  },
+  {
+    "id": "dayr-al-balah",
+    "name": "Dayr al Balah",
+    "countryCode": "ps",
+    "lat": 31.4183,
+    "lng": 34.3493
+  },
+  {
+    "id": "east-jerusalem",
+    "name": "East Jerusalem",
+    "countryCode": "ps",
+    "lat": 31.7834,
+    "lng": 35.2339
+  },
+  {
+    "id": "gaza",
+    "name": "Gaza",
+    "countryCode": "ps",
+    "lat": 31.5016,
+    "lng": 34.4667
+  },
+  {
+    "id": "hebron",
+    "name": "Hebron",
+    "countryCode": "ps",
+    "lat": 31.5294,
+    "lng": 35.0938
+  },
+  {
+    "id": "jabalya",
+    "name": "Jabalya",
+    "countryCode": "ps",
+    "lat": 31.5272,
+    "lng": 34.4835
+  },
+  {
+    "id": "khan-yunis",
+    "name": "Khan Yunis",
+    "countryCode": "ps",
+    "lat": 31.3402,
+    "lng": 34.3063
+  },
+  {
+    "id": "ma-ale-adummim",
+    "name": "Ma'ale Adummim",
+    "countryCode": "ps",
+    "lat": 31.7774,
+    "lng": 35.2988
+  },
+  {
+    "id": "nablus",
+    "name": "Nablus",
+    "countryCode": "ps",
+    "lat": 32.2211,
+    "lng": 35.2544
+  },
+  {
+    "id": "old-city",
+    "name": "Old City",
+    "countryCode": "ps",
+    "lat": 31.7767,
+    "lng": 35.2342
+  },
+  {
+    "id": "qalqilyah",
+    "name": "Qalqilyah",
+    "countryCode": "ps",
+    "lat": 32.1897,
+    "lng": 34.9706
+  },
+  {
+    "id": "rafah",
+    "name": "Rafah",
+    "countryCode": "ps",
+    "lat": 31.2972,
+    "lng": 34.2436
+  },
+  {
+    "id": "ramallah",
+    "name": "Ramallah",
+    "countryCode": "ps",
+    "lat": 31.8996,
+    "lng": 35.2042
+  },
+  {
+    "id": "shu-fat",
+    "name": "Shu'fat",
+    "countryCode": "ps",
+    "lat": 31.8165,
+    "lng": 35.2275
+  },
+  {
+    "id": "tulkarm",
+    "name": "Tulkarm",
+    "countryCode": "ps",
+    "lat": 32.3116,
+    "lng": 35.0269
+  },
+  {
+    "id": "yatta",
+    "name": "Yatta",
+    "countryCode": "ps",
+    "lat": 31.4459,
+    "lng": 35.0944
+  },
+  {
     "id": "lisbon",
     "name": "Lisbon",
     "countryCode": "pt",
@@ -16710,14 +16747,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 159.9888
   },
   {
-    "id": "victoria-sc",
-    "name": "Victoria",
-    "countryCode": "sc",
-    "lat": -4.62,
-    "lng": 55.455,
-    "isCapital": true
-  },
-  {
     "id": "khartoum",
     "name": "Khartoum",
     "countryCode": "sd",
@@ -16998,147 +17027,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "se",
     "lat": 59.6162,
     "lng": 16.5528
-  },
-  {
-    "id": "singapore",
-    "name": "Singapore",
-    "countryCode": "sg",
-    "lat": 1.2897,
-    "lng": 103.8501,
-    "isCapital": true
-  },
-  {
-    "id": "ang-mo-kio-new-town",
-    "name": "Ang Mo Kio New Town",
-    "countryCode": "sg",
-    "lat": 1.3803,
-    "lng": 103.8397
-  },
-  {
-    "id": "bedok-new-town",
-    "name": "Bedok New Town",
-    "countryCode": "sg",
-    "lat": 1.3264,
-    "lng": 103.9417
-  },
-  {
-    "id": "bukit-batok-new-town",
-    "name": "Bukit Batok New Town",
-    "countryCode": "sg",
-    "lat": 1.359,
-    "lng": 103.7637
-  },
-  {
-    "id": "bukit-merah-estate",
-    "name": "Bukit Merah Estate",
-    "countryCode": "sg",
-    "lat": 1.2842,
-    "lng": 103.8231
-  },
-  {
-    "id": "bukit-panjang-new-town",
-    "name": "Bukit Panjang New Town",
-    "countryCode": "sg",
-    "lat": 1.3797,
-    "lng": 103.7647
-  },
-  {
-    "id": "choa-chu-kang-new-town",
-    "name": "Choa Chu Kang New Town",
-    "countryCode": "sg",
-    "lat": 1.3825,
-    "lng": 103.7497
-  },
-  {
-    "id": "hougang-new-town",
-    "name": "Hougang New Town",
-    "countryCode": "sg",
-    "lat": 1.3567,
-    "lng": 103.8908
-  },
-  {
-    "id": "jurong-town",
-    "name": "Jurong Town",
-    "countryCode": "sg",
-    "lat": 1.3342,
-    "lng": 103.7228
-  },
-  {
-    "id": "jurong-west",
-    "name": "Jurong West",
-    "countryCode": "sg",
-    "lat": 1.3503,
-    "lng": 103.7228
-  },
-  {
-    "id": "kampong-pasir-ris",
-    "name": "Kampong Pasir Ris",
-    "countryCode": "sg",
-    "lat": 1.3783,
-    "lng": 103.9319
-  },
-  {
-    "id": "kembangan",
-    "name": "Kembangan",
-    "countryCode": "sg",
-    "lat": 1.3223,
-    "lng": 103.9114
-  },
-  {
-    "id": "punggol",
-    "name": "Punggol",
-    "countryCode": "sg",
-    "lat": 1.4144,
-    "lng": 103.9069
-  },
-  {
-    "id": "sengkang-new-town",
-    "name": "Sengkang New Town",
-    "countryCode": "sg",
-    "lat": 1.3917,
-    "lng": 103.8944
-  },
-  {
-    "id": "tampines-estate",
-    "name": "Tampines Estate",
-    "countryCode": "sg",
-    "lat": 1.3581,
-    "lng": 103.9403
-  },
-  {
-    "id": "tampines-new-town",
-    "name": "Tampines New Town",
-    "countryCode": "sg",
-    "lat": 1.3492,
-    "lng": 103.9497
-  },
-  {
-    "id": "toa-payoh-new-town",
-    "name": "Toa Payoh New Town",
-    "countryCode": "sg",
-    "lat": 1.3361,
-    "lng": 103.85
-  },
-  {
-    "id": "ulu-bedok",
-    "name": "Ulu Bedok",
-    "countryCode": "sg",
-    "lat": 1.3333,
-    "lng": 103.9333
-  },
-  {
-    "id": "woodlands",
-    "name": "Woodlands",
-    "countryCode": "sg",
-    "lat": 1.438,
-    "lng": 103.7888
-  },
-  {
-    "id": "yishun-new-town",
-    "name": "Yishun New Town",
-    "countryCode": "sg",
-    "lat": 1.4333,
-    "lng": 103.8311
   },
   {
     "id": "ljubljana",
@@ -17820,14 +17708,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 30.6764
   },
   {
-    "id": "sao-tome",
-    "name": "Sao Tome",
-    "countryCode": "st",
-    "lat": 0.3376,
-    "lng": 6.7299,
-    "isCapital": true
-  },
-  {
     "id": "san-salvador",
     "name": "San Salvador",
     "countryCode": "sv",
@@ -18217,6 +18097,14 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 18.3833
   },
   {
+    "id": "port-aux-francais",
+    "name": "Port-aux-Francais",
+    "countryCode": "tf",
+    "lat": -49.3492,
+    "lng": 70.2194,
+    "isCapital": true
+  },
+  {
     "id": "lome",
     "name": "Lome",
     "countryCode": "tg",
@@ -18596,6 +18484,63 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "tj",
     "lat": 38.5563,
     "lng": 69.0135
+  },
+  {
+    "id": "dili",
+    "name": "Dili",
+    "countryCode": "tl",
+    "lat": -8.5586,
+    "lng": 125.5736,
+    "isCapital": true
+  },
+  {
+    "id": "aileu",
+    "name": "Aileu",
+    "countryCode": "tl",
+    "lat": -8.7281,
+    "lng": 125.5664
+  },
+  {
+    "id": "atsabe",
+    "name": "Atsabe",
+    "countryCode": "tl",
+    "lat": -8.925,
+    "lng": 125.3981
+  },
+  {
+    "id": "likisa",
+    "name": "Likisa",
+    "countryCode": "tl",
+    "lat": -8.5875,
+    "lng": 125.3419
+  },
+  {
+    "id": "lospalos",
+    "name": "Lospalos",
+    "countryCode": "tl",
+    "lat": -8.5217,
+    "lng": 126.9983
+  },
+  {
+    "id": "maliana",
+    "name": "Maliana",
+    "countryCode": "tl",
+    "lat": -8.9917,
+    "lng": 125.2197
+  },
+  {
+    "id": "maubara",
+    "name": "Maubara",
+    "countryCode": "tl",
+    "lat": -8.6119,
+    "lng": 125.2061
+  },
+  {
+    "id": "suai",
+    "name": "Suai",
+    "countryCode": "tl",
+    "lat": -9.3129,
+    "lng": 125.2565
   },
   {
     "id": "ashgabat",
@@ -19090,147 +19035,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "countryCode": "tt",
     "lat": 10.2797,
     "lng": -61.4683
-  },
-  {
-    "id": "taipei",
-    "name": "Taipei",
-    "countryCode": "tw",
-    "lat": 25.0531,
-    "lng": 121.5264,
-    "isCapital": true
-  },
-  {
-    "id": "bade",
-    "name": "Bade",
-    "countryCode": "tw",
-    "lat": 24.9298,
-    "lng": 121.2837
-  },
-  {
-    "id": "banqiao",
-    "name": "Banqiao",
-    "countryCode": "tw",
-    "lat": 25.0143,
-    "lng": 121.4672
-  },
-  {
-    "id": "chang-hua",
-    "name": "Chang-hua",
-    "countryCode": "tw",
-    "lat": 24.0733,
-    "lng": 120.5628
-  },
-  {
-    "id": "changhua",
-    "name": "Changhua",
-    "countryCode": "tw",
-    "lat": 24.0692,
-    "lng": 120.5512
-  },
-  {
-    "id": "chiayi-city",
-    "name": "Chiayi City",
-    "countryCode": "tw",
-    "lat": 23.4792,
-    "lng": 120.4489
-  },
-  {
-    "id": "danshui",
-    "name": "Danshui",
-    "countryCode": "tw",
-    "lat": 25.172,
-    "lng": 121.4429
-  },
-  {
-    "id": "fengshan",
-    "name": "Fengshan",
-    "countryCode": "tw",
-    "lat": 22.6266,
-    "lng": 120.3613
-  },
-  {
-    "id": "hsinchu",
-    "name": "Hsinchu",
-    "countryCode": "tw",
-    "lat": 24.8036,
-    "lng": 120.9686
-  },
-  {
-    "id": "kaohsiung",
-    "name": "Kaohsiung",
-    "countryCode": "tw",
-    "lat": 22.6163,
-    "lng": 120.3133
-  },
-  {
-    "id": "keelung",
-    "name": "Keelung",
-    "countryCode": "tw",
-    "lat": 25.1309,
-    "lng": 121.7409
-  },
-  {
-    "id": "neihu",
-    "name": "Neihu",
-    "countryCode": "tw",
-    "lat": 25.0815,
-    "lng": 121.5881
-  },
-  {
-    "id": "new-taipei-city",
-    "name": "New Taipei City",
-    "countryCode": "tw",
-    "lat": 25.062,
-    "lng": 121.457
-  },
-  {
-    "id": "shulin",
-    "name": "Shulin",
-    "countryCode": "tw",
-    "lat": 24.9908,
-    "lng": 121.422
-  },
-  {
-    "id": "taichung",
-    "name": "Taichung",
-    "countryCode": "tw",
-    "lat": 24.1469,
-    "lng": 120.6839
-  },
-  {
-    "id": "tainan",
-    "name": "Tainan",
-    "countryCode": "tw",
-    "lat": 22.9908,
-    "lng": 120.2133
-  },
-  {
-    "id": "taoyuan",
-    "name": "Taoyuan",
-    "countryCode": "tw",
-    "lat": 24.9937,
-    "lng": 121.297
-  },
-  {
-    "id": "xizhi",
-    "name": "Xizhi",
-    "countryCode": "tw",
-    "lat": 25.0662,
-    "lng": 121.6599
-  },
-  {
-    "id": "yongkang",
-    "name": "Yongkang",
-    "countryCode": "tw",
-    "lat": 23.0244,
-    "lng": 120.2556
-  },
-  {
-    "id": "zhubei",
-    "name": "Zhubei",
-    "countryCode": "tw",
-    "lat": 24.8383,
-    "lng": 121.0078
   },
   {
     "id": "dodoma",
@@ -20163,21 +19967,6 @@ export const WORLD_CITIES: WorldCity[] = [
     "lng": 69.2794
   },
   {
-    "id": "kingstown",
-    "name": "Kingstown",
-    "countryCode": "vc",
-    "lat": 13.1553,
-    "lng": -61.2274,
-    "isCapital": true
-  },
-  {
-    "id": "calliaqua",
-    "name": "Calliaqua",
-    "countryCode": "vc",
-    "lat": 13.1287,
-    "lng": -61.1918
-  },
-  {
     "id": "caracas",
     "name": "Caracas",
     "countryCode": "ve",
@@ -20536,6 +20325,91 @@ export const WORLD_CITIES: WorldCity[] = [
     "lat": -17.7365,
     "lng": 168.3137,
     "isCapital": true
+  },
+  {
+    "id": "pristina",
+    "name": "Pristina",
+    "countryCode": "xk",
+    "lat": 42.6727,
+    "lng": 21.1669,
+    "isCapital": true
+  },
+  {
+    "id": "decan",
+    "name": "Decan",
+    "countryCode": "xk",
+    "lat": 42.5402,
+    "lng": 20.2879
+  },
+  {
+    "id": "ferizaj",
+    "name": "Ferizaj",
+    "countryCode": "xk",
+    "lat": 42.3706,
+    "lng": 21.1553
+  },
+  {
+    "id": "gjakove",
+    "name": "Gjakove",
+    "countryCode": "xk",
+    "lat": 42.3803,
+    "lng": 20.4308
+  },
+  {
+    "id": "gjilan",
+    "name": "Gjilan",
+    "countryCode": "xk",
+    "lat": 42.4605,
+    "lng": 21.4699
+  },
+  {
+    "id": "glogovac",
+    "name": "Glogovac",
+    "countryCode": "xk",
+    "lat": 42.6283,
+    "lng": 20.8939
+  },
+  {
+    "id": "istok",
+    "name": "Istok",
+    "countryCode": "xk",
+    "lat": 42.7808,
+    "lng": 20.4875
+  },
+  {
+    "id": "mitrovice",
+    "name": "Mitrovice",
+    "countryCode": "xk",
+    "lat": 42.8833,
+    "lng": 20.8667
+  },
+  {
+    "id": "peje",
+    "name": "Peje",
+    "countryCode": "xk",
+    "lat": 42.6591,
+    "lng": 20.2883
+  },
+  {
+    "id": "prizren",
+    "name": "Prizren",
+    "countryCode": "xk",
+    "lat": 42.2139,
+    "lng": 20.7397
+  },
+  {
+    "id": "suva-reka",
+    "name": "Suva Reka",
+    "countryCode": "xk",
+    "lat": 42.3586,
+    "lng": 20.825
+  },
+  {
+    "id": "vitina",
+    "name": "Vitina",
+    "countryCode": "xk",
+    "lat": 42.3214,
+    "lng": 21.3583
   },
   {
     "id": "sanaa",

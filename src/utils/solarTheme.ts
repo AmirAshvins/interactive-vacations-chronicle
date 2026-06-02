@@ -36,11 +36,11 @@ export function getSolarUiTheme(phase: SolarState['phase']): SolarUiTheme {
       frameBorder: 'rgba(255, 255, 255, 0.07)',
       frameShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.15)',
       flightStroke: '#d4af37',
-      flightStrokeWidth: '0.65',
+      flightStrokeWidth: '0.95',
       flightPlaneFill: '#e5c76a',
       flightPlaneStroke: 'rgba(255, 255, 255, 0.9)',
-      landmassStroke: 'rgba(212, 175, 55, 0.18)',
-      landmassStrokeWidth: '0.35',
+      landmassStroke: 'rgba(212, 175, 55, 0.34)',
+      landmassStrokeWidth: '0.55',
     };
   }
 
@@ -55,10 +55,10 @@ export function getSolarUiTheme(phase: SolarState['phase']): SolarUiTheme {
     frameBorder: 'rgba(92, 72, 48, 0.12)',
     frameShadow: 'inset 0 0 48px rgba(92, 72, 48, 0.03)',
     flightStroke: '#a58452',
-    flightStrokeWidth: '0.6',
+    flightStrokeWidth: '0.9',
     flightPlaneFill: '#b8956a',
     flightPlaneStroke: 'rgba(255, 255, 255, 0.75)',
-    landmassStroke: 'rgba(92, 72, 48, 0.14)',
-    landmassStrokeWidth: '0.35',
+    landmassStroke: 'rgba(92, 68, 38, 0.32)',
+    landmassStrokeWidth: '0.55',
   };
 }

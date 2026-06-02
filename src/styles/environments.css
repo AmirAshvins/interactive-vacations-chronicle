@@ -18,9 +18,22 @@
   min-height: var(--env-tv-touch-min);
 }
 
+.env-tv-interaction .map-viewport-controls--tv .map-viewport-btn,
+.env-tv-interaction .map-viewport-controls--tv .map-hud-btn--text {
+  min-width: var(--env-tv-touch-min);
+  min-height: var(--env-tv-touch-min);
+}
+
+.env-tv-interaction .map-viewport-controls--tv .map-viewport-btn {
+  width: var(--env-tv-touch-min);
+  height: var(--env-tv-touch-min);
+}
+
 .env-tv-interaction .map-pin:focus-visible .map-pin-dot,
 .env-tv-interaction .dock-btn:focus-visible,
-.env-tv-interaction .right-panel-tab:focus-visible {
+.env-tv-interaction .right-panel-tab:focus-visible,
+.env-tv-interaction .map-viewport-btn:focus-visible,
+.env-tv-interaction .map-hud-btn--text:focus-visible {
   box-shadow: var(--env-focus-ring);
   outline: none;
 }

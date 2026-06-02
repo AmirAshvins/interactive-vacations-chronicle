@@ -7,22 +7,27 @@ import {
   unprojectCoordinates,
   getFlightPath,
   MAP_VIEWBOX_STRING,
-  type ProjectOptions,
 } from '../utils/flightArc';
-import { HOME_ORIGIN_ID, resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
+import { resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
+import { tripsForMapPins } from '../utils/mapPinDisplay';
 import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
 import { latLngToScreen } from '../utils/tripCardPosition';
-import MapPin from './MapPin';
+import SvgMapMarker from './SvgMapMarker';
 import FlightArc, { MAX_ANIMATED_FLIGHTS } from './FlightArc';
 import { useTvFocus } from '../context/TvFocusContext';
 import {
   clampMapPan,
   focalFromClient,
+  getPinScreenScale,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
+  MAP_ZOOM_STEP,
+  stepMapPan,
   zoomMapAtPoint,
   type MapPan,
 } from '../utils/mapGestures';
+import { useEnvironmentContext } from '../context/EnvironmentContext';
+import MapViewportControls from './MapViewportControls';
 
 export type { Trip, FlightRoute };
 
@@ -43,6 +48,8 @@ interface WorldMapProps {
   materialMode: 'oak' | 'cork' | 'walnut' | 'auto';
   isOverlayVisible?: boolean;
   onMapClick?: () => void;
+  openTripCount?: number;
+  onCloseAllTrips?: () => void;
 }
 
 interface ParsedPath {
@@ -62,9 +69,12 @@ type ParsedNode =
   | { type: 'path'; data: ParsedPath }
   | { type: 'g'; data: ParsedGroup };
 
-const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}world-map.svg`;
+const useLegacyMap =
+  import.meta.env.VITE_MAP_LEGACY === 'true' || import.meta.env.VITE_MAP_LEGACY === '1';
+const WORLD_MAP_SVG_URL = `${import.meta.env.BASE_URL}${
+  useLegacyMap ? 'world-map-legacy.svg' : 'world-map.svg'
+}`;
 
-const FLIGHT_PLANE_CAP = MAX_ANIMATED_FLIGHTS * 2;
 
 export default function WorldMap({
   solarState,
@@ -83,7 +93,10 @@ export default function WorldMap({
   materialMode,
   isOverlayVisible = true,
   onMapClick,
+  openTripCount = 0,
+  onCloseAllTrips,
 }: WorldMapProps) {
+  const { tvInteraction } = useEnvironmentContext();
   const [mapNodes, setMapNodes] = useState<ParsedNode[]>([]);
   const [zoom, setZoom] = useState(1.0);
   const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
@@ -105,8 +118,6 @@ export default function WorldMap({
     startY: number;
     lat: number;
     lng: number;
-    countryCode: string;
-    cityKey?: string;
   } | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -186,15 +197,6 @@ export default function WorldMap({
       .catch((err) => console.error('[WorldMap] Failed to load map:', err));
   }, [onCountriesLoaded]);
 
-  const projectOpts = useCallback(
-    (trip: { countryCode: string; cityKey?: string; id: string }): ProjectOptions => ({
-      countryCode: trip.countryCode,
-      cityKey: trip.cityKey,
-      pinId: trip.id,
-    }),
-    [],
-  );
-
   const flightPaths = useMemo(() => {
     if (!showFlightPaths) return [];
 
@@ -204,18 +206,9 @@ export default function WorldMap({
         if (!endpoints) return null;
 
         const { fromLat, fromLng, toLat, toLng } = endpoints;
-        const toTrip = trips.find((t) => t.id === flight.toTripId);
-        const fromTrip =
-          flight.fromTripId === HOME_ORIGIN_ID
-            ? null
-            : trips.find((t) => t.id === flight.fromTripId);
-        const fromOptions: ProjectOptions = fromTrip
-          ? projectOpts(fromTrip)
-          : { countryCode: 'ca', cityKey: homeOrigin?.cityKey, pinId: 'home' };
-        const toOptions = toTrip ? projectOpts(toTrip) : undefined;
-        const pathD = getFlightPath(fromLat, fromLng, toLat, toLng, fromOptions, toOptions);
-        const start = projectCoordinates(fromLat, fromLng, fromOptions);
-        const end = projectCoordinates(toLat, toLng, toOptions);
+        const pathD = getFlightPath(fromLat, fromLng, toLat, toLng, flight.id);
+        const start = projectCoordinates(fromLat, fromLng);
+        const end = projectCoordinates(toLat, toLng);
         const duration = Math.max(
           6,
           Math.min(
@@ -223,21 +216,25 @@ export default function WorldMap({
             Math.floor(Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2) / 30),
           ),
         );
-
         return { id: flight.id, pathD, duration, idx };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-  }, [showFlightPaths, flights, trips, homeOrigin, projectOpts]);
+  }, [showFlightPaths, flights, trips, homeOrigin]);
+
+  const mapPins = useMemo(
+    () => tripsForMapPins(trips, { homeOrigin, openTripIds }),
+    [trips, homeOrigin, openTripIds],
+  );
 
   const denseFlightLayer = flightPaths.length > 36;
 
   const flightGeometryKey = useMemo(
-    () => flightPaths.map((entry) => `${entry.id}:${entry.pathD}:${entry.duration}`).join(';'),
+    () =>
+      flightPaths
+        .map((entry) => `${entry.id}:${entry.pathD}:${entry.duration}`)
+        .join(';'),
     [flightPaths],
   );
-
-  const animatePlanes =
-    !denseFlightLayer && flightPaths.length <= FLIGHT_PLANE_CAP;
 
   // Defer flight layer until map paths are laid out.
   useEffect(() => {
@@ -277,7 +274,7 @@ export default function WorldMap({
     return parts.join(' ');
   };
 
-  const clientToLatLng = useCallback((clientX: number, clientY: number, options?: ProjectOptions) => {
+  const clientToLatLng = useCallback((clientX: number, clientY: number) => {
     const svg = pinLayerRef.current;
     if (!svg) return null;
     const ctm = svg.getScreenCTM();
@@ -286,7 +283,7 @@ export default function WorldMap({
     pt.x = clientX;
     pt.y = clientY;
     const svgPt = pt.matrixTransform(ctm.inverse());
-    return unprojectCoordinates(svgPt.x, svgPt.y, options);
+    return unprojectCoordinates(svgPt.x, svgPt.y);
   }, []);
 
   const handlePinPointerDown = useCallback(
@@ -301,8 +298,6 @@ export default function WorldMap({
         startY: e.clientY,
         lat: trip.lat,
         lng: trip.lng,
-        countryCode: trip.countryCode,
-        cityKey: trip.cityKey,
       };
     },
     [onTripLocationChange, openTripIds],
@@ -322,17 +317,7 @@ export default function WorldMap({
       }
 
       if (!pinDrag && !pinDragPrepRef.current) return;
-      const dragOpts = prep
-        ? { countryCode: prep.countryCode, cityKey: prep.cityKey, pinId: prep.tripId }
-        : pinDrag
-          ? {
-              countryCode:
-                trips.find((t) => t.id === pinDrag.tripId)?.countryCode ?? 'ca',
-              cityKey: trips.find((t) => t.id === pinDrag.tripId)?.cityKey,
-              pinId: pinDrag.tripId,
-            }
-          : undefined;
-      const coords = clientToLatLng(e.clientX, e.clientY, dragOpts);
+      const coords = clientToLatLng(e.clientX, e.clientY);
       if (!coords) return;
       const activeId = pinDrag?.tripId ?? prep?.tripId;
       if (!activeId) return;
@@ -347,12 +332,8 @@ export default function WorldMap({
       pinDragPrepRef.current = null;
 
       if (pinDrag && onTripLocationChange) {
+        const coords = clientToLatLng(e.clientX, e.clientY);
         const trip = trips.find((t) => t.id === pinDrag.tripId);
-        const coords = clientToLatLng(
-          e.clientX,
-          e.clientY,
-          trip ? projectOpts(trip) : undefined,
-        );
         if (coords && trip) {
           const moved =
             Math.abs(trip.lat - coords.lat) > 0.001 ||
@@ -368,7 +349,7 @@ export default function WorldMap({
         (e.currentTarget as Element).releasePointerCapture(e.pointerId);
       }
     },
-    [clientToLatLng, onTripLocationChange, pinDrag, projectOpts, trips],
+    [clientToLatLng, onTripLocationChange, pinDrag, trips],
   );
 
   const applyMapView = useCallback((nextZoom: number, nextPan: MapPan) => {
@@ -396,8 +377,8 @@ export default function WorldMap({
 
   const handleStagePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    if ((e.target as HTMLElement).closest('.map-reset-view-btn, button, a, input, label')) return;
-    if ((e.target as HTMLElement).closest('.map-pin')) return;
+    if ((e.target as HTMLElement).closest('.map-viewport-controls, button, a, input, label')) return;
+    if ((e.target as Element).closest('.map-pin-svg, .map-pin')) return;
     if (pinDrag) return;
     if (zoomRef.current <= MAP_MIN_ZOOM) return;
 
@@ -554,12 +535,71 @@ export default function WorldMap({
     };
   }, []);
 
-  const resetZoom = () => {
+  const resetZoom = useCallback(() => {
     zoomRef.current = MAP_MIN_ZOOM;
     panRef.current = { x: 0, y: 0 };
     setZoom(MAP_MIN_ZOOM);
     setPan({ x: 0, y: 0 });
-  };
+  }, []);
+
+  const zoomAtCenter = useCallback(
+    (factor: number) => {
+      const el = mapContainerRef.current;
+      if (!el) return;
+      const { zoom: z, pan: p } = zoomMapAtPoint(
+        zoomRef.current,
+        panRef.current,
+        zoomRef.current * factor,
+        0,
+        0,
+        el.clientWidth,
+        el.clientHeight,
+      );
+      applyMapView(z, p);
+    },
+    [applyMapView],
+  );
+
+  const panMap = useCallback(
+    (direction: 'up' | 'down' | 'left' | 'right') => {
+      const el = mapContainerRef.current;
+      if (!el || zoomRef.current <= MAP_MIN_ZOOM) return;
+      const nextPan = stepMapPan(
+        panRef.current,
+        zoomRef.current,
+        direction,
+        el.clientWidth,
+        el.clientHeight,
+      );
+      applyMapView(zoomRef.current, nextPan);
+    },
+    [applyMapView],
+  );
+
+  const mapViewportActions = useMemo(
+    () => ({
+      zoomIn: () => zoomAtCenter(MAP_ZOOM_STEP),
+      zoomOut: () => zoomAtCenter(1 / MAP_ZOOM_STEP),
+      pan: panMap,
+      reset: resetZoom,
+      closeAll: () => onCloseAllTrips?.(),
+    }),
+    [zoomAtCenter, panMap, resetZoom, onCloseAllTrips],
+  );
+
+  useEffect(() => {
+    tvFocus.registerMapViewportActions(mapViewportActions);
+    return () => tvFocus.registerMapViewportActions(null);
+  }, [tvFocus, mapViewportActions]);
+
+  const pinScale = getPinScreenScale(zoom);
+  const showMapPanZoom = tvInteraction || zoom > MAP_MIN_ZOOM;
+  const showMapReset = zoom > MAP_MIN_ZOOM;
+  const showCloseAllCards = openTripCount > 0 && !!onCloseAllTrips;
+  const showMapHud =
+    isOverlayVisible && (showMapPanZoom || showMapReset || showCloseAllCards);
+  const mapControlFocused =
+    tvFocus.enabled && tvFocus.state.zone === 'map-controls' ? tvFocus.mapControlTarget : null;
 
   const updateTripCardAnchors = useCallback(() => {
     const onTripCardAnchorsChange = onTripCardAnchorsChangeRef.current;
@@ -584,7 +624,7 @@ export default function WorldMap({
       const isDraggingPin = pinDrag?.tripId === tripId;
       const lat = isDraggingPin ? pinDrag.lat : trip.lat;
       const lng = isDraggingPin ? pinDrag.lng : trip.lng;
-      const screen = latLngToScreen(lat, lng, pinLayer, projectOpts(trip));
+      const screen = latLngToScreen(lat, lng, pinLayer);
       if (screen) anchors[tripId] = screen;
     }
 
@@ -617,7 +657,7 @@ export default function WorldMap({
       lastAnchorsRef.current = anchors;
       onTripCardAnchorsChange(anchors);
     }
-  }, [mapNodes.length, projectOpts]);
+  }, [mapNodes.length]);
 
   useEffect(() => {
     if (openTripIds.length === 0) {
@@ -645,11 +685,11 @@ export default function WorldMap({
       const isDraggingPin = pinDragRef.current?.tripId === trip.id;
       const lat = isDraggingPin ? pinDragRef.current!.lat : trip.lat;
       const lng = isDraggingPin ? pinDragRef.current!.lng : trip.lng;
-      const screen = latLngToScreen(lat, lng, pinLayer, projectOpts(trip));
+      const screen = latLngToScreen(lat, lng, pinLayer);
       if (screen) positions[trip.id] = screen;
     }
     onChange(positions);
-  }, [mapNodes.length, projectOpts]);
+  }, [mapNodes.length]);
 
   useEffect(() => {
     if (!onPinScreenPositionsChange) return;
@@ -693,9 +733,9 @@ export default function WorldMap({
       <div className="spotlight-overlay" />
 
       <div
-        className="map-transform-layer"
+        className={`map-transform-layer${isGesturing || isDragging ? ' map-transform-layer--active' : ''}`}
         style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
           transition: isGesturing ? 'none' : 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         }}
       >
@@ -758,7 +798,7 @@ export default function WorldMap({
                       id={entry.id}
                       pathD={entry.pathD}
                       duration={entry.duration}
-                      animatePlane={animatePlanes}
+                      animatePlane={entry.idx < MAX_ANIMATED_FLIGHTS}
                       animationDelay={entry.idx * 0.35}
                     />
                   ))}
@@ -771,34 +811,32 @@ export default function WorldMap({
                 viewBox={MAP_VIEWBOX_STRING}
                 preserveAspectRatio="xMidYMid meet"
               >
-                {trips.map((trip) => {
+                {mapPins.map((trip) => {
                   const isDraggingPin = pinDrag?.tripId === trip.id;
                   const lat = isDraggingPin ? pinDrag.lat : trip.lat;
                   const lng = isDraggingPin ? pinDrag.lng : trip.lng;
-                  const { x, y } = projectCoordinates(lat, lng, projectOpts(trip));
+                  const { x, y } = projectCoordinates(lat, lng);
                   const isOpen = openTripSet.has(trip.id);
                   const isDraggable = isOpen && !!onTripLocationChange;
+                  const hitRadius = (tvInteraction ? 24 : 16) / pinScale;
 
                   return (
                     <g
                       key={trip.id}
-                      transform={`translate(${x}, ${y})`}
+                      transform={`translate(${x}, ${y}) scale(${pinScale})`}
                       className={`map-pin-anchor ${isDraggable ? 'map-pin-draggable' : ''} ${isDraggingPin ? 'map-pin-dragging' : ''}`}
                       onPointerDown={(e) => handlePinPointerDown(e, trip)}
                       onPointerMove={handlePinPointerMove}
                       onPointerUp={handlePinPointerUp}
                       onPointerCancel={handlePinPointerUp}
                     >
-                      <foreignObject x={-7} y={-7} width={14} height={14} overflow="visible">
-                        <MapPin
-                          pin={trip}
-                          selected={isOpen}
-                          tvFocused={tvFocus.isMapPinFocused(trip.id)}
-                          embedded
-                          draggable={isDraggable && !tvFocus.enabled}
-                          onClick={() => onPinClick(trip)}
-                        />
-                      </foreignObject>
+                      <SvgMapMarker
+                        trip={trip}
+                        selected={isOpen}
+                        tvFocused={tvFocus.isMapPinFocused(trip.id)}
+                        hitRadius={hitRadius}
+                        onClick={() => onPinClick(trip)}
+                      />
                     </g>
                   );
                 })}
@@ -812,19 +850,22 @@ export default function WorldMap({
         </div>
       </div>
 
-      {zoom > MAP_MIN_ZOOM &&
+      {showMapHud &&
         createPortal(
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              resetZoom();
-            }}
-            className={`map-reset-view-btn tv-hud-element ${isOverlayVisible ? '' : 'tv-hud-hidden'}`}
-          >
-            Reset view
-          </button>,
+          <MapViewportControls
+            showPanZoom={showMapPanZoom}
+            showReset={showMapReset}
+            showCloseAll={showCloseAllCards}
+            openTripCount={openTripCount}
+            isOverlayVisible={isOverlayVisible}
+            tvInteraction={tvInteraction}
+            focusedControl={mapControlFocused}
+            onZoomIn={() => zoomAtCenter(MAP_ZOOM_STEP)}
+            onZoomOut={() => zoomAtCenter(1 / MAP_ZOOM_STEP)}
+            onPan={panMap}
+            onReset={resetZoom}
+            onCloseAll={() => onCloseAllTrips?.()}
+          />,
           document.body,
         )}
 

@@ -244,7 +244,7 @@ export const BEDROOD_COUNTRY_ROUTES: {
   },
   {
     label: 'Indonesia',
-    cities: [c('bali', 'Bali', 'id', -8.5069, 115.2625, 'denpasar')],
+    cities: [c('bali', 'Bali', 'id', -8.65, 115.2167, 'denpasar')],
   },
   {
     label: 'Austria',

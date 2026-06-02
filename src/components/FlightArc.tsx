@@ -13,25 +13,31 @@ interface FlightArcProps {
   animationDelay: number;
 }
 
-function FlightArc({ id, pathD, duration, animatePlane, animationDelay }: FlightArcProps) {
+function FlightArc({
+  id,
+  pathD,
+  duration,
+  animatePlane,
+  animationDelay,
+}: FlightArcProps) {
   const arcId = `arc-${id}`;
 
   return (
     <g className="flight-arc-group">
-      <path id={arcId} d={pathD} className="flight-arc" pathLength={100} />
+      <path id={arcId} d={pathD} className="flight-arc" />
       {animatePlane && (
-        <g
-          className="flight-plane-motion"
+        <path
+          d={PLANE_PATH}
+          className="flight-plane flight-plane-motion"
+          transform="translate(-1, 0)"
           style={
             {
-              '--flight-path': `path('${pathD}')`,
+              offsetPath: `url(#${arcId})`,
               '--flight-duration': `${duration}s`,
               '--flight-delay': `${animationDelay}s`,
             } as React.CSSProperties
           }
-        >
-          <path d={PLANE_PATH} className="flight-plane" transform="translate(-1, 0)" />
-        </g>
+        />
       )}
     </g>
   );

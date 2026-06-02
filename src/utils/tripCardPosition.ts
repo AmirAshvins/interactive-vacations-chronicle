@@ -1,4 +1,4 @@
-import { projectCoordinates, type ProjectOptions } from './flightArc';
+import { projectCoordinates } from './flightArc';
 
 export const TRIP_CARD_HEIGHT = 420;
 export const TRIP_CARD_MARGIN = 12;
@@ -15,9 +15,8 @@ export function latLngToScreen(
   lat: number,
   lng: number,
   pinLayer: SVGSVGElement,
-  projectOptions?: ProjectOptions,
 ): { x: number; y: number } | null {
-  const { x, y } = projectCoordinates(lat, lng, projectOptions);
+  const { x, y } = projectCoordinates(lat, lng);
   const pt = pinLayer.createSVGPoint();
   pt.x = x;
   pt.y = y;
