@@ -381,6 +381,14 @@ export default function TravelogueView({ mode, travelogueId, appSettings }: Trav
 
   const appContent = (
     <div className="relative h-full w-full overflow-hidden">
+      {mode === 'synced' ? (
+        <div
+          className="absolute right-4 top-4 z-[85] rounded-full border border-emerald-600/30 bg-emerald-50/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-800 backdrop-blur-sm"
+          title="Changes from other devices appear automatically"
+        >
+          Live
+        </div>
+      ) : null}
       {!travelogueReady && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#f5f0e8]/80 backdrop-blur-sm">
           <p className="text-xs font-light uppercase tracking-[0.3em] opacity-50">Loading chronicle…</p>

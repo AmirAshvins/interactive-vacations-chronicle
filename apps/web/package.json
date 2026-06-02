@@ -13,6 +13,7 @@
     "@ivc/shared": "0.0.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-virtual": "^3.13.26",
+    "graphql-ws": "^6.0.8",
     "idb": "^8.0.3",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",

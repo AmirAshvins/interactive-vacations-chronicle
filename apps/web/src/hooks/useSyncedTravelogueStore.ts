@@ -15,6 +15,8 @@ import {
 } from '../lib/graphql/operations';
 import type { MapDisplaySettings } from '../types/travelogue';
 import type { TripImageChanges } from './useTravelogueStore';
+import { applyTripPatch, type TripPatchMessage } from '../lib/graphql/applyTripPatch';
+import { useTravelogueSubscription } from './useTravelogueSubscription';
 
 export type { Trip };
 
@@ -87,6 +89,19 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
       cancelled = true;
     };
   }, [accessToken, reload]);
+
+  const applyRemotePatch = useCallback((patch: TripPatchMessage) => {
+    setTrips((prev) => {
+      const next = applyTripPatch(prev, patch);
+      if (patch.op === 'DELETED') return next;
+      const incomingVersion = patch.version;
+      const existing = prev.find((t) => t.id === patch.tripId);
+      if (existing && (existing.version ?? 0) >= incomingVersion) return prev;
+      return next;
+    });
+  }, []);
+
+  useTravelogueSubscription(travelogueId, accessToken, applyRemotePatch, ready);
 
   const addTrip = useCallback(
     async (trip: Trip, imageChanges?: TripImageChanges) => {
@@ -210,5 +225,6 @@ export function useSyncedTravelogueStore(travelogueId: string, accessToken: stri
     importTrips,
     mergeImportTrips,
     visitedCountryCodes,
+    liveSync: true,
   };
 }

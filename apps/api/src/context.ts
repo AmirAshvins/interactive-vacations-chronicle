@@ -67,6 +67,22 @@ export function createContextFactory() {
   };
 }
 
+export async function createWsContext(
+  connectionParams: Record<string, unknown> | undefined,
+): Promise<AppContext> {
+  const raw = connectionParams?.Authorization;
+  const header =
+    typeof raw === 'string'
+      ? raw.startsWith('Bearer ')
+        ? raw
+        : `Bearer ${raw}`
+      : '';
+  const request = new Request('http://internal.local/graphql', {
+    headers: header ? { Authorization: header } : {},
+  });
+  return createAppContext(request);
+}
+
 export function getUserId(ctx: AppContext): string | null {
   return ctx.user?.id ?? null;
 }

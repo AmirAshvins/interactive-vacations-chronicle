@@ -11,23 +11,28 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "test:smoke": "tsx scripts/smoke-test.ts"
+    "test:smoke": "tsx scripts/smoke-test.ts",
+    "test:subscription": "tsx scripts/test-subscription.mts"
   },
   "dependencies": {
+    "@graphql-yoga/subscription": "^5.0.5",
     "@ivc/shared": "0.0.0",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
     "@node-rs/argon2": "^2.0.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "graphql": "^16.14.1",
+    "graphql-ws": "^6.0.8",
     "graphql-yoga": "^5.21.1",
     "jose": "^6.2.3",
     "lucia": "^3.2.2",
     "postgres": "^3.4.9",
+    "ws": "^8.21.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^24.12.3",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.4",
     "typescript": "~6.0.2"

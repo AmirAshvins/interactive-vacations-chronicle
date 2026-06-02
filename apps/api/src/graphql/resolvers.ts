@@ -5,6 +5,9 @@ import { requireAuth } from '../lib/errors.js';
 import * as authService from '../services/auth.js';
 import * as travelogueService from '../services/travelogue.js';
 import * as tripService from '../services/trip.js';
+import * as syncPublish from '../services/syncPublish.js';
+import { traveloguePubSub } from '../pubsub/travelogue.js';
+import { getMemberRole, requireRole } from '../services/travelogue.js';
 import {
   mapTravelogueSummaryToGraphql,
   mapTravelogueToGraphql,
@@ -144,7 +147,9 @@ export const resolvers = {
       const userId = getUserId(ctx);
       requireAuth(userId);
       const trip = await tripService.createTrip(ctx.db, args.travelogueId, userId, args.input);
-      return mapTripToGraphql(trip);
+      const gqlTrip = mapTripToGraphql(trip);
+      syncPublish.publishTripCreated(args.travelogueId, trip);
+      return gqlTrip;
     },
 
     updateTrip: async (
@@ -167,7 +172,9 @@ export const resolvers = {
         args.baseVersion,
         args.input,
       );
-      return mapTripToGraphql(trip);
+      const gqlTrip = mapTripToGraphql(trip);
+      syncPublish.publishTripUpdated(trip.travelogueId, trip);
+      return gqlTrip;
     },
 
     deleteTrip: async (
@@ -178,7 +185,26 @@ export const resolvers = {
       void args.clientMutationId;
       const userId = getUserId(ctx);
       requireAuth(userId);
-      return tripService.deleteTrip(ctx.db, args.id, userId, args.baseVersion);
+      const deleted = await tripService.deleteTrip(ctx.db, args.id, userId, args.baseVersion);
+      syncPublish.publishTripDeleted(deleted.travelogueId, deleted.tripId, deleted.version);
+      return true;
+    },
+  },
+
+  Subscription: {
+    travelogueUpdated: {
+      subscribe: async (
+        _parent: unknown,
+        args: { travelogueId: string },
+        ctx: AppContext,
+      ) => {
+        const userId = getUserId(ctx);
+        requireAuth(userId);
+        const role = await getMemberRole(ctx.db, args.travelogueId, userId);
+        requireRole(role, 'viewer');
+        return traveloguePubSub.subscribe('travelogue-updated', args.travelogueId);
+      },
+      resolve: (payload: import('../pubsub/travelogue.js').TripPatchPayload) => payload,
     },
   },
 };

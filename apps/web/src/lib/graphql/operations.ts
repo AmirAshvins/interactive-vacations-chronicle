@@ -194,3 +194,30 @@ export const DELETE_TRIP = /* GraphQL */ `
     deleteTrip(id: $id, baseVersion: $baseVersion, clientMutationId: $clientMutationId)
   }
 `;
+
+export const TRAVELOGUE_UPDATED = /* GraphQL */ `
+  subscription TravelogueUpdated($travelogueId: ID!) {
+    travelogueUpdated(travelogueId: $travelogueId) {
+      op
+      tripId
+      version
+      trip {
+        id
+        countryCode
+        cityKey
+        name
+        lat
+        lng
+        description
+        material
+        startYear
+        startMonth
+        endYear
+        endMonth
+        version
+        imageUrls
+        updatedAt
+      }
+    }
+  }
+`;

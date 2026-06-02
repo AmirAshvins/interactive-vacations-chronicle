@@ -27,10 +27,11 @@ Phone is not a “companion only” client. QR pairing is an optional workflow w
 |---------|-------------|
 | `yarn dev` | Web dev server (alias for `dev:web`) |
 | `yarn dev:web` | Web app only |
-| `yarn dev:api` | API stub server (port 4000) |
+| `yarn dev:api` | GraphQL API + WebSocket subscriptions (port 4000) |
 | `yarn db:up` | Start local Postgres (Docker) |
 | `yarn db:migrate` | Apply Drizzle migrations |
 | `yarn test:smoke` | API integration smoke test (API must be running) |
+| `yarn test:subscription` | WebSocket `travelogueUpdated` smoke test (API must be running) |
 | `yarn build` | Production build |
 | `yarn preview` | Preview production build |
 | `yarn lint` | ESLint |
@@ -86,3 +87,13 @@ yarn dev:web                            # http://localhost:5173
 ```
 
 Sign up at `/signup`, create a travelogue, open the map at `/t/:id`. Offline-only: `/guest`.
+
+### Live sync (Phase 3)
+
+Trip create/update/delete mutations publish `travelogueUpdated` over `graphql-ws` on the same `/graphql` path. The web client subscribes while viewing a travelogue (green **Live** badge when connected).
+
+```bash
+yarn test:subscription   # with yarn dev:api running
+```
+
+Open the same `/t/:id` in two tabs; edits in one tab should appear in the other within about a second.

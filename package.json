@@ -22,6 +22,7 @@
     "db:down": "docker compose down",
     "db:migrate": "yarn workspace @ivc/api db:migrate",
     "db:generate": "yarn workspace @ivc/api db:generate",
-    "test:smoke": "yarn workspace @ivc/api test:smoke"
+    "test:smoke": "yarn workspace @ivc/api test:smoke",
+    "test:subscription": "yarn workspace @ivc/api test:subscription"
   }
 }

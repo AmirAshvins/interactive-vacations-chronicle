@@ -67,6 +67,19 @@ export const typeDefs = /* GraphQL */ `
     expiresIn: Int!
   }
 
+  enum PatchOp {
+    CREATED
+    UPDATED
+    DELETED
+  }
+
+  type TripPatch {
+    op: PatchOp!
+    tripId: ID!
+    version: Int!
+    trip: Trip
+  }
+
   type Query {
     me: User
     travelogue(id: ID!): Travelogue
@@ -90,6 +103,10 @@ export const typeDefs = /* GraphQL */ `
     createTrip(travelogueId: ID!, input: TripInput!, clientMutationId: String!): Trip!
     updateTrip(id: ID!, input: TripInput!, baseVersion: Int!, clientMutationId: String!): Trip!
     deleteTrip(id: ID!, baseVersion: Int!, clientMutationId: String!): Boolean!
+  }
+
+  type Subscription {
+    travelogueUpdated(travelogueId: ID!): TripPatch!
   }
 
   input MapSettingsInput {

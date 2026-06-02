@@ -132,7 +132,11 @@ export async function deleteTrip(
     .where(eq(trips.id, tripId));
 
   await bumpTravelogueVersion(db, existing.travelogueId);
-  return true;
+  return {
+    travelogueId: existing.travelogueId,
+    tripId: existing.id,
+    version: existing.version + 1,
+  };
 }
 
 export async function getTripById(db: Database, tripId: string) {

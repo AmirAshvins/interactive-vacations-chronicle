@@ -873,12 +873,14 @@ export function useSyncedTravelogueStore(travelogueId: string) {
 
 ### Phase 3 — Subscriptions + multi-device (3–5 days)
 
-- [ ] `graphql-ws` on API
-- [ ] `travelogueUpdated` subscription
-- [ ] Apollo subscription in web client
-- [ ] Two browser tabs stay in sync
+- [x] `graphql-ws` on API
+- [x] `travelogueUpdated` subscription
+- [x] `graphql-ws` client in web (live sync badge)
+- [ ] Two browser tabs stay in sync (manual verify)
 
 **Exit criteria:** Edit in tab A appears in tab B within 1s.
+
+**Verify:** `yarn db:up && yarn db:migrate`, `yarn dev:api`, then `yarn test:subscription` or two tabs on `/t/:travelogueId`.
 
 ---
 
