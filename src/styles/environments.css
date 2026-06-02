@@ -58,11 +58,6 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* Chronicle edit control is hover-only on desktop — always show under TV interaction */
-.env-tv-interaction .chronicle-log-edit {
-  opacity: 1;
-}
-
 /* --- Mobile layout --- */
 
 .env-mobile-layout {

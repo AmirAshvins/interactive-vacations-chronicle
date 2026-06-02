@@ -1,12 +1,24 @@
-# Bedrood Azizi Travelogue
+# Interactive Vacations Chronicle
 
-A family travel chronicle on an interactive world map — journal entries, flight arcs, photos, and a solar-driven day/night presentation. Built for desktop, mobile, and TV (remote / D-pad).
+An interactive world-map travel chronicle — journal entries, flight arcs, photos, and a solar-driven day/night presentation. Built as a **first-class experience on phone, desktop, and TV**.
+
+GitHub repo: `interactive-vacations-chronicle`
+
+## Platforms
+
+| Platform | Role |
+|----------|------|
+| **Phone** | Full standalone app — map, chronicle editing, trip photos, settings, account, travelogue management. Works without a TV. |
+| **Desktop** | Same feature set as phone with the reference inset-map layout. |
+| **TV** | Living-room **display** — map, chronicle browse, screensaver. Editing is awkward on a remote; scan the on-screen **QR code** with your phone to manage chronicles and settings while the TV updates live. |
+
+Phone is not a “companion only” client. QR pairing is an optional workflow when a TV is in the room, not a requirement to use the product.
 
 ## Stack
 
 - React 19 + TypeScript + Vite
 - Tailwind CSS 4
-- IndexedDB (`idb`) for trips and images
+- IndexedDB (`idb`) for trips and images (offline cache today; server sync planned)
 - Natural Earth 110m countries → `public/world-map.svg`
 
 ## Scripts
@@ -34,15 +46,20 @@ public/
 scripts/
   build-world-map-svg.mjs
 docs/
-  ENVIRONMENT_UX.md   Mobile / TV / desktop behavior
+  ENVIRONMENT_UX.md      Mobile / TV / desktop behavior
+  SERVER_STACK_PLAN.md   Server sync, auth, and hosting plan
 ```
 
 ## Chronicle templates
 
-Bedrood Azizi routes live under `src/data/chronicleTemplates/`. Import from the Chronicle panel in the app.
+Sample family routes live under `src/data/chronicleTemplates/`. Import from the Chronicle panel in the app.
 
-## TV mode
+## TV + phone workflow
 
-Enable **TV interaction** in Settings for remote navigation, map pan/zoom controls, and the on-screen focus debug bar.
+1. Open the app on TV — map and chronicle in display mode (D-pad / remote navigation).
+2. To add trips, edit entries, or change travelogue settings, scan the TV’s QR code with your phone (logged in).
+3. Changes on the phone sync to the server and appear on the TV via realtime subscriptions.
 
-See [docs/ENVIRONMENT_UX.md](docs/ENVIRONMENT_UX.md) for layout and interaction details.
+Without a TV, use the phone or desktop app directly for everything.
+
+See [docs/ENVIRONMENT_UX.md](docs/ENVIRONMENT_UX.md) for layout and interaction details, and [docs/SERVER_STACK_PLAN.md](docs/SERVER_STACK_PLAN.md) for the backend implementation plan.

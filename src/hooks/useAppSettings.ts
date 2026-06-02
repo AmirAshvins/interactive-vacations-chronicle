@@ -4,7 +4,8 @@ import type { EnvironmentOverride } from '../utils/detectEnvironment';
 import type { MapPinStyleId } from '../data/mapPinStyles';
 import { DEFAULT_MAP_PIN_STYLE, normalizeMapPinStyleId } from '../data/mapPinStyles';
 
-const APP_SETTINGS_KEY = 'bedrood-azizi-app-settings';
+const APP_SETTINGS_KEY = 'ivc-app-settings';
+const LEGACY_APP_SETTINGS_KEY = 'bedrood-azizi-app-settings';
 
 export type MaterialMode = 'oak' | 'cork' | 'walnut' | 'auto';
 
@@ -51,8 +52,12 @@ function migrateSettings(parsed: Partial<AppSettings> & { isTvMode?: boolean }):
 
 function loadAppSettings(): AppSettings {
   try {
-    const raw = localStorage.getItem(APP_SETTINGS_KEY);
+    const raw =
+      localStorage.getItem(APP_SETTINGS_KEY) ?? localStorage.getItem(LEGACY_APP_SETTINGS_KEY);
     if (raw) {
+      if (!localStorage.getItem(APP_SETTINGS_KEY) && localStorage.getItem(LEGACY_APP_SETTINGS_KEY)) {
+        localStorage.setItem(APP_SETTINGS_KEY, raw);
+      }
       return migrateSettings(JSON.parse(raw) as Partial<AppSettings> & { isTvMode?: boolean });
     }
   } catch {

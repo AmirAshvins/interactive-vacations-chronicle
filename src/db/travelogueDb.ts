@@ -6,7 +6,8 @@ import {
   persistDataUrlsAsImages,
 } from './tripImages';
 
-const DB_NAME = 'bedrood-azizi-travelogue';
+const DB_NAME = 'ivc-travelogue';
+const LEGACY_DB_NAME = 'bedrood-azizi-travelogue';
 const DB_VERSION = 3;
 const META_INITIALIZED = 'initialized';
 
@@ -34,6 +35,51 @@ interface TravelogueDB extends DBSchema {
 }
 
 let dbPromise: Promise<IDBPDatabase<TravelogueDB>> | null = null;
+let legacyMigrationPromise: Promise<void> | null = null;
+
+async function migrateLegacyDatabaseIfNeeded(db: IDBPDatabase<TravelogueDB>): Promise<void> {
+  const initialized = await db.get('meta', META_INITIALIZED);
+  if (initialized) return;
+
+  let legacyDb: IDBPDatabase<TravelogueDB> | null = null;
+  try {
+    legacyDb = await openDB<TravelogueDB>(LEGACY_DB_NAME, DB_VERSION);
+  } catch {
+    return;
+  }
+
+  const legacyInitialized = await legacyDb.get('meta', META_INITIALIZED);
+  if (!legacyInitialized) {
+    legacyDb.close();
+    return;
+  }
+
+  const legacyTrips = await legacyDb.getAll('trips');
+  const tx = db.transaction(['trips', 'meta'], 'readwrite');
+  for (const trip of legacyTrips) {
+    await tx.objectStore('trips').put({ ...trip, imageIds: trip.imageIds ?? [] });
+  }
+  await tx.objectStore('meta').put(true, META_INITIALIZED);
+  await tx.done;
+
+  if (legacyDb.objectStoreNames.contains('images')) {
+    const legacyImages = await legacyDb.getAll('images');
+    const imageTx = db.transaction(['images'], 'readwrite');
+    for (const image of legacyImages) {
+      await imageTx.objectStore('images').put(image);
+    }
+    await imageTx.done;
+  }
+
+  legacyDb.close();
+}
+
+async function ensureLegacyMigration(db: IDBPDatabase<TravelogueDB>): Promise<void> {
+  if (!legacyMigrationPromise) {
+    legacyMigrationPromise = migrateLegacyDatabaseIfNeeded(db);
+  }
+  await legacyMigrationPromise;
+}
 
 export function getDb() {
   if (!dbPromise) {
@@ -92,6 +138,7 @@ async function replaceTrips(trips: Trip[]): Promise<void> {
 
 export async function loadTravelogue(initial: TravelogueData): Promise<TravelogueData> {
   const db = await getDb();
+  await ensureLegacyMigration(db);
   const initialized = await db.get('meta', META_INITIALIZED);
 
   if (initialized) {

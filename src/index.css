@@ -810,6 +810,60 @@ html.solar-dark-phase body {
   background: var(--panel-surface);
 }
 
+/* Chronicle card — edit control (always visible; accent so it reads as actionable) */
+.chronicle-log-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.15rem;
+  padding: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(165, 132, 82, 0.38);
+  background: rgba(165, 132, 82, 0.14);
+  color: #8a6b3d;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.chronicle-log-edit:hover {
+  background: rgba(165, 132, 82, 0.22);
+  border-color: rgba(165, 132, 82, 0.55);
+  color: #6f5428;
+}
+
+.chronicle-log-edit:active {
+  transform: scale(0.94);
+}
+
+.chronicle-log-edit:focus-visible {
+  outline: 2px solid rgba(165, 132, 82, 0.65);
+  outline-offset: 2px;
+}
+
+.chronicle-log-edit--dark {
+  border-color: rgba(201, 169, 106, 0.42);
+  background: rgba(165, 132, 82, 0.2);
+  color: #d4b87a;
+}
+
+.chronicle-log-edit--dark:hover {
+  background: rgba(165, 132, 82, 0.32);
+  border-color: rgba(201, 169, 106, 0.6);
+  color: #f0ddb0;
+}
+
+.group:hover .chronicle-log-edit {
+  border-color: rgba(165, 132, 82, 0.5);
+}
+
+.group:hover .chronicle-log-edit--dark {
+  border-color: rgba(201, 169, 106, 0.55);
+}
+
 /* Embedded panel tabs — chronicle list scrolls; archive footer stays in view */
 .sketchbook-embedded {
   display: flex;

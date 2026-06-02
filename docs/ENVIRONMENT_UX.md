@@ -1,6 +1,16 @@
 # Environment UX — TV / Mobile / Desktop
 
-This document is the master plan for multi-platform support in the Bedrood Azizi Travelogue.
+This document is the master plan for multi-platform support in **Interactive Vacations Chronicle**.
+
+## Platform roles
+
+| Platform | Standalone? | Primary use |
+|----------|-------------|-------------|
+| **Phone** | **Yes — full product** | Map, chronicle CRUD, trip editor, photos, settings, account, travelogue picker. Bottom-sheet layout when `mobileLayout` is on. |
+| **Desktop** | Yes | Same features as phone; inset map + right panel (reference layout). |
+| **TV** | Display-first | Living-room map + chronicle browse, screensaver, D-pad nav. **QR pairing** with phone for editing and travelogue/settings management — optional, only when a TV is present. |
+
+The phone app is **not** a remote control stub. Users can install the PWA on a phone and never touch a TV. When a TV is in the room, scanning the TV’s QR code links that display to the logged-in account so phone edits appear on the big screen in realtime (see [SERVER_STACK_PLAN.md](./SERVER_STACK_PLAN.md)).
 
 ## Three independent axes
 
@@ -96,7 +106,9 @@ Signals: TV UA (Tizen, webOS, Fire TV, etc.), `(display-mode: tv)`, large viewpo
 
 ---
 
-## Mobile (phone / narrow)
+## Mobile (phone / narrow) — standalone platform
+
+The phone experience is a **complete** chronicle app, not a TV accessory.
 
 ### Layout targets
 
@@ -118,12 +130,19 @@ Signals: TV UA (Tizen, webOS, Fire TV, etc.), `(display-mode: tv)`, large viewpo
 ### Chronicle
 
 - Virtual list (done) + touch scroll
+- Full trip create / edit / delete via bottom-sheet `TripDialog`
+- Import / export and travelogue management (server era: `/travelogues` + account)
 - Swipe actions optional later (edit / delete)
 
 ### Settings
 
 - Same bottom sheet shell as Chronicle
 - Large toggles, list pickers for city
+- All travelogue-scoped settings editable on phone without a TV
+
+### TV pairing from phone (optional)
+
+When a TV shows a QR code, the phone opens `/pair?code=…` (after login), selects a travelogue, and becomes the **editor** for that session while the TV stays in **display** mode. The phone can still be used normally before, during, and after pairing — pairing does not replace the standalone phone UI.
 
 ### Detection
 
@@ -160,9 +179,9 @@ Signals: TV UA (Tizen, webOS, Fire TV, etc.), `(display-mode: tv)`, large viewpo
 
 ### Layer 3 — Adaptive settings & editors
 
-- [ ] `PickerList` replaces `<select>` on TV/mobile
-- [ ] TV: browse-only; edit on desktop or companion
-- [ ] Mobile: simplified trip form
+- [ ] `PickerList` replaces `<select>` on TV
+- [ ] TV: browse + display; edit on phone (standalone or QR-paired) or desktop
+- [ ] Mobile: full trip form (standalone — no TV required)
 
 ### Layer 4 — Polish
 

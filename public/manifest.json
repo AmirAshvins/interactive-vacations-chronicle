@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "World Map Travelogue",
-  "short_name": "Travelogue",
-  "description": "Interactive world map travel journal with pin drops, routes, chronicle entries, and immersive map exploration.",
+  "name": "Interactive Vacations Chronicle",
+  "short_name": "IVC Chronicle",
+  "description": "Interactive world map vacation chronicle with pin drops, routes, journal entries, and immersive map exploration on phone, desktop, and TV.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

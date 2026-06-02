@@ -59,12 +59,10 @@ function ChronicleLogCard({
           <button
             type="button"
             onClick={(e) => onEdit(trip, e)}
-            className={`chronicle-log-edit rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100 ${
-              isDarkPhase ? 'hover:bg-white/10' : 'hover:bg-black/5'
-            }`}
+            className={`chronicle-log-edit shrink-0 ${isDarkPhase ? 'chronicle-log-edit--dark' : 'chronicle-log-edit--light'}`}
             aria-label="Edit journey"
           >
-            <Pencil size={11} />
+            <Pencil size={13} strokeWidth={2.25} aria-hidden />
           </button>
         </div>
       </div>
