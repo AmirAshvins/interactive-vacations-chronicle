@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { SolarState } from '../utils/solarEngine';
 import type { Trip, FlightRoute } from '../types/travelogue';
 import {
@@ -13,6 +14,14 @@ import { latLngToScreen } from '../utils/tripCardPosition';
 import MapPin from './MapPin';
 import FlightArc, { MAX_ANIMATED_FLIGHTS } from './FlightArc';
 import { useTvFocus } from '../context/TvFocusContext';
+import {
+  clampMapPan,
+  focalFromClient,
+  MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  zoomMapAtPoint,
+  type MapPan,
+} from '../utils/mapGestures';
 
 export type { Trip, FlightRoute };
 
@@ -76,9 +85,14 @@ export default function WorldMap({
 }: WorldMapProps) {
   const [mapNodes, setMapNodes] = useState<ParsedNode[]>([]);
   const [zoom, setZoom] = useState(1.0);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
+  const [isGesturing, setIsGesturing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  const panSessionRef = useRef<{ startX: number; startY: number; startPan: MapPan } | null>(null);
+  zoomRef.current = zoom;
+  panRef.current = pan;
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [pinDrag, setPinDrag] = useState<{ tripId: string; lat: number; lng: number } | null>(
@@ -315,41 +329,193 @@ export default function WorldMap({
     [clientToLatLng, onTripLocationChange, pinDrag, trips],
   );
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
+  const applyMapView = useCallback((nextZoom: number, nextPan: MapPan) => {
+    const el = mapContainerRef.current;
+    if (!el) return;
+    const clamped = clampMapPan(nextPan, nextZoom, el.clientWidth, el.clientHeight);
+    const z = nextZoom <= MAP_MIN_ZOOM ? MAP_MIN_ZOOM : Math.min(MAP_MAX_ZOOM, nextZoom);
+    const p = z <= MAP_MIN_ZOOM ? { x: 0, y: 0 } : clamped;
+    zoomRef.current = z;
+    panRef.current = p;
+    setZoom(z);
+    setPan(p);
+  }, []);
+
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (zoomRef.current <= MAP_MIN_ZOOM) return;
+      applyMapView(zoomRef.current, panRef.current);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [applyMapView]);
+
+  const handleStagePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if ((e.target as HTMLElement).closest('.map-reset-view-btn, button, a, input, label')) return;
     if ((e.target as HTMLElement).closest('.map-pin')) return;
     if (pinDrag) return;
-    if (zoom <= 1) return;
+    if (zoomRef.current <= MAP_MIN_ZOOM) return;
+
+    panSessionRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPan: { ...panRef.current },
+    };
     setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    setIsGesturing(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const maxPan = 400 * zoom;
-      setPan({
-        x: Math.max(-maxPan, Math.min(maxPan, e.clientX - dragStart.x)),
-        y: Math.max(-maxPan, Math.min(maxPan, e.clientY - dragStart.y)),
-      });
+  const handleStagePointerMove = (e: React.PointerEvent) => {
+    const session = panSessionRef.current;
+    if (!session) return;
+
+    applyMapView(
+      zoomRef.current,
+      {
+        x: session.startPan.x + (e.clientX - session.startX),
+        y: session.startPan.y + (e.clientY - session.startY),
+      },
+    );
+  };
+
+  const endStagePan = (e: React.PointerEvent) => {
+    if (!panSessionRef.current) return;
+    panSessionRef.current = null;
+    setIsDragging(false);
+    setIsGesturing(false);
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
     }
-    if (hoveredCountryId) {
-      setTooltipPos({ x: e.clientX + 16, y: e.clientY - 8 });
-    }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el) return;
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = 1.08;
-    const newZoom =
-      e.deltaY < 0 ? Math.min(3.0, zoom * factor) : Math.max(1.0, zoom / factor);
-    setZoom(newZoom);
-    if (newZoom === 1.0) setPan({ x: 0, y: 0 });
-  };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const focal = focalFromClient(e.clientX, e.clientY, rect);
+      const delta = -e.deltaY * 0.0018;
+      const { zoom: z, pan: p } = zoomMapAtPoint(
+        zoomRef.current,
+        panRef.current,
+        zoomRef.current * Math.exp(delta),
+        focal.x,
+        focal.y,
+        rect.width,
+        rect.height,
+      );
+      zoomRef.current = z;
+      panRef.current = p;
+      setZoom(z);
+      setPan(p);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el) return;
+
+    const activeTouches = new Map<number, { x: number; y: number }>();
+    let pinch: {
+      startDist: number;
+      startZoom: number;
+      startPan: MapPan;
+      midX: number;
+      midY: number;
+    } | null = null;
+
+    const syncPinch = () => {
+      if (!pinch || activeTouches.size < 2) return;
+      const pts = [...activeTouches.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const scale = dist / pinch.startDist;
+      const rect = el.getBoundingClientRect();
+      const { zoom: z, pan: p } = zoomMapAtPoint(
+        pinch.startZoom,
+        pinch.startPan,
+        pinch.startZoom * scale,
+        pinch.midX,
+        pinch.midY,
+        rect.width,
+        rect.height,
+      );
+      zoomRef.current = z;
+      panRef.current = p;
+      setZoom(z);
+      setPan(p);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      for (const t of e.changedTouches) {
+        activeTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+      }
+      if (activeTouches.size === 2) {
+        panSessionRef.current = null;
+        setIsDragging(false);
+        const pts = [...activeTouches.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const rect = el.getBoundingClientRect();
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        pinch = {
+          startDist: dist,
+          startZoom: zoomRef.current,
+          startPan: { ...panRef.current },
+          midX: midX - rect.left - rect.width / 2,
+          midY: midY - rect.top - rect.height / 2,
+        };
+        setIsGesturing(true);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      for (const t of e.changedTouches) {
+        if (activeTouches.has(t.identifier)) {
+          activeTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+        }
+      }
+      if (pinch && activeTouches.size >= 2) {
+        e.preventDefault();
+        syncPinch();
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      for (const t of e.changedTouches) {
+        activeTouches.delete(t.identifier);
+      }
+      if (activeTouches.size < 2) pinch = null;
+      if (activeTouches.size === 0) setIsGesturing(false);
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, []);
 
   const resetZoom = () => {
-    setZoom(1.0);
+    zoomRef.current = MAP_MIN_ZOOM;
+    panRef.current = { x: 0, y: 0 };
+    setZoom(MAP_MIN_ZOOM);
     setPan({ x: 0, y: 0 });
   };
 
@@ -462,18 +628,24 @@ export default function WorldMap({
       ? trips.find((t) => t.id === tvFocus.state.mapPinId)
       : null;
 
+  const handleStageMouseMove = (e: React.MouseEvent) => {
+    if (hoveredCountryId) {
+      setTooltipPos({ x: e.clientX + 16, y: e.clientY - 8 });
+    }
+  };
+
   return (
     <div
       ref={mapContainerRef}
-      className="map-stage select-none"
+      className="map-stage map-stage-gestures select-none"
       data-phase={solarState.phase}
       data-material={activeMaterial}
-      style={{ cursor: isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'default' }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
+      style={{ cursor: isDragging ? 'grabbing' : zoom > MAP_MIN_ZOOM ? 'grab' : 'default' }}
+      onPointerDown={handleStagePointerDown}
+      onPointerMove={handleStagePointerMove}
+      onPointerUp={endStagePan}
+      onPointerCancel={endStagePan}
+      onMouseMove={handleStageMouseMove}
       onClick={() => onMapClick?.()}
     >
       <div className="spotlight-overlay" />
@@ -482,7 +654,7 @@ export default function WorldMap({
         className="map-transform-layer"
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+          transition: isGesturing ? 'none' : 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         }}
       >
         <div className="map-aspect-box">
@@ -598,17 +770,21 @@ export default function WorldMap({
         </div>
       </div>
 
-      {zoom > 1 && (
-        <button
-          type="button"
-          onClick={resetZoom}
-          className={`absolute bottom-4 left-4 z-30 rounded-full border border-black/5 bg-white/80 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-black/60 shadow-lg backdrop-blur-sm transition-all hover:bg-white tv-hud-element ${
-            isOverlayVisible ? '' : 'tv-hud-hidden'
-          }`}
-        >
-          Reset view
-        </button>
-      )}
+      {zoom > MAP_MIN_ZOOM &&
+        createPortal(
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              resetZoom();
+            }}
+            className={`map-reset-view-btn tv-hud-element ${isOverlayVisible ? '' : 'tv-hud-hidden'}`}
+          >
+            Reset view
+          </button>,
+          document.body,
+        )}
 
       <div
         className={`pointer-events-none fixed z-50 rounded-md border border-black/5 bg-white/90 px-3 py-1.5 text-[10px] font-light uppercase tracking-widest text-black/70 shadow-lg backdrop-blur-md transition-opacity duration-200 ${

@@ -67,6 +67,58 @@ html.solar-dark-phase body {
   overflow: hidden;
 }
 
+.map-stage-gestures {
+  touch-action: none;
+}
+
+.map-reset-view-btn {
+  position: fixed;
+  z-index: 35;
+  pointer-events: auto;
+  cursor: pointer;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--mobile-sheet-offset, 0px));
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.5rem 1rem;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity var(--hud-transition),
+    visibility var(--hud-transition),
+    transform var(--hud-transition),
+    background 0.15s ease;
+}
+
+.map-reset-view-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.solar-dark-phase .map-reset-view-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 18, 20, 0.82);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.solar-dark-phase .map-reset-view-btn:hover {
+  background: rgba(28, 28, 32, 0.92);
+}
+
+@media (min-width: 768px) {
+  .map-reset-view-btn {
+    left: clamp(20px, 3vw, 32px);
+    bottom: clamp(20px, 3vh, 32px);
+  }
+}
+
 /* Full-viewport map stage with premium inset margins */
 .map-stage {
   position: absolute;

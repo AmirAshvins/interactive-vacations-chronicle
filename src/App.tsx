@@ -45,7 +45,7 @@ function TravelogueApp({
 }: {
   appSettings: ReturnType<typeof useAppSettings>;
 }) {
-  const { tvInteraction } = useEnvironmentContext();
+  const { tvInteraction, mobileLayout } = useEnvironmentContext();
   const [pinScreenPositions, setPinScreenPositions] = useState<
     Record<string, { x: number; y: number }>
   >({});
@@ -62,6 +62,11 @@ function TravelogueApp({
   });
 
   const [panelTab, setPanelTab] = useState<PanelTab | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('map-panel-open', mobileLayout && panelTab !== null);
+    return () => document.documentElement.classList.remove('map-panel-open');
+  }, [mobileLayout, panelTab]);
 
   const [isOverlayVisible, setIsOverlayVisible] = useState<boolean>(true);
 
