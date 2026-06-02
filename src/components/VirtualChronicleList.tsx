@@ -38,9 +38,15 @@ export default function VirtualChronicleList({
   useEffect(() => {
     tv.registerChronicleScroller((index) => {
       if (index < 0 || index >= trips.length) return;
-      virtualizer.scrollToIndex(index, { align: 'auto' });
+      virtualizer.scrollToIndex(index, { align: 'center' });
     });
-  }, [tv, virtualizer, trips.length]);
+    tv.registerChronicleTripScroller((tripId) => {
+      const index = trips.findIndex((t) => t.id === tripId);
+      if (index < 0) return;
+      virtualizer.scrollToIndex(index, { align: 'center' });
+    });
+    return () => tv.registerChronicleTripScroller(null);
+  }, [tv, virtualizer, trips]);
 
   if (trips.length === 0) {
     return <>{emptyState}</>;

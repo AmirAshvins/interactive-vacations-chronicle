@@ -88,16 +88,6 @@ html.map-sheet-expanded.env-mobile-layout.map-panel-open {
   border-radius: 0;
 }
 
-.env-mobile-layout .right-panel-sheet-hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.45;
-  text-align: center;
-}
 
 .env-mobile-layout .trip-detail-card {
   max-height: min(100dvh, 100%);
@@ -150,7 +140,6 @@ html.map-sheet-expanded.env-mobile-layout.map-panel-open {
   height: 0.3rem;
   margin: 0;
   border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
 }
 
@@ -219,6 +208,15 @@ html.map-sheet-expanded.env-mobile-layout.map-panel-open {
   overscroll-behavior: contain;
 }
 
+.env-mobile-layout .sketchbook-archive {
+  flex-shrink: 0;
+}
+
+.env-mobile-layout .sketchbook-chronicle-region {
+  flex: 1 1 auto;
+  min-height: 120px;
+}
+
 .env-mobile-layout .trip-detail-card {
   left: 0 !important;
   right: 0 !important;
@@ -236,6 +234,7 @@ html.map-sheet-expanded.env-mobile-layout.map-panel-open {
 
 .env-mobile-layout .trip-detail-card:not(.tv-hud-hidden-right) {
   transform: translateY(0);
+  z-index: 45;
 }
 
 .env-mobile-layout .map-stage {
@@ -244,6 +243,30 @@ html.map-sheet-expanded.env-mobile-layout.map-panel-open {
   margin: 0;
   border-radius: 0;
   transition: bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.env-mobile-layout .map-scrollport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.env-mobile-layout .map-scrollport .map-transform-layer {
+  flex-shrink: 0;
+}
+
+.env-mobile-layout .map-aspect-box--scrollable {
+  width: max(100%, min(var(--map-mobile-min-width), calc((100dvh - var(--mobile-sheet-offset, 0px) - 40px) * 1.71)));
+  height: auto;
+  min-width: var(--map-mobile-min-width);
+  min-height: var(--map-mobile-min-height);
+  max-width: none;
+  flex-shrink: 0;
 }
 
 .env-mobile-layout .map-aspect-box {

@@ -1,4 +1,4 @@
-import { MAP_VIEWBOX } from './mapViewBox';
+import { MAP_CROP_VIEWBOX as MAP_VIEWBOX } from './mapViewBox';
 
 export interface ViewBoxFit {
   scale: number;

@@ -34,6 +34,45 @@ export interface NeedlePinColors {
   needle: string;
 }
 
+/** Flight arc / plane colors aligned with the active pin palette */
+export interface MapPinFlightTheme {
+  flightStroke: string;
+  flightPlaneFill: string;
+  flightPlaneStroke: string;
+}
+
+export function flightThemeForPinStyle(
+  styleId: MapPinStyleId,
+  isDarkPhase: boolean,
+): MapPinFlightTheme {
+  if (styleId === 'needle-blue') {
+    return {
+      flightStroke: isDarkPhase ? '#8fa8c8' : '#2a4568',
+      flightPlaneFill: isDarkPhase ? '#b4c5d8' : '#1a3352',
+      flightPlaneStroke: 'rgba(255,255,255,0.88)',
+    };
+  }
+  if (styleId === 'needle-copper') {
+    return {
+      flightStroke: isDarkPhase ? '#d4a574' : '#9a3412',
+      flightPlaneFill: isDarkPhase ? '#ea580c' : '#7c2d12',
+      flightPlaneStroke: 'rgba(255,255,255,0.88)',
+    };
+  }
+  if (styleId === 'dot-classic') {
+    return {
+      flightStroke: isDarkPhase ? '#f87171' : '#dc2626',
+      flightPlaneFill: isDarkPhase ? '#fca5a5' : '#b91c1c',
+      flightPlaneStroke: 'rgba(255,255,255,0.9)',
+    };
+  }
+  return {
+    flightStroke: isDarkPhase ? '#f87171' : '#dc2626',
+    flightPlaneFill: isDarkPhase ? '#fca5a5' : '#dc2626',
+    flightPlaneStroke: 'rgba(255,255,255,0.9)',
+  };
+}
+
 export function needleColorsForTrip(
   styleId: MapPinStyleId,
   isCopper: boolean,

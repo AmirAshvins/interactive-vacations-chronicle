@@ -16,8 +16,10 @@ import { deriveJournalFlights, getHomeOrigin } from './utils/flightRoutes';
 import { useTravelogueStore } from './hooks/useTravelogueStore';
 import { useAppSettings } from './hooks/useAppSettings';
 import { getSolarUiTheme, SOLAR_CLOCK_TRANSITION_MS, SOLAR_MANUAL_TRANSITION_MS } from './utils/solarTheme';
+import { flightThemeForPinStyle } from './data/mapPinStyles';
 import { EnvironmentProvider, useEnvironmentContext } from './context/EnvironmentContext';
-import { TvFocusProvider } from './context/TvFocusContext';
+import { TvFocusProvider, useTvFocus } from './context/TvFocusContext';
+import { PanelChromeProvider, usePanelChrome } from './context/PanelChromeContext';
 import EnvironmentDebugBar from './components/EnvironmentDebugBar';
 import ControlDock from './components/ControlDock';
 
@@ -62,19 +64,21 @@ function TravelogueApp({
   });
 
   const [panelTab, setPanelTab] = useState<PanelTab | null>(null);
+  const [isOverlayVisible, setIsOverlayVisible] = useState<boolean>(true);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('map-panel-open', mobileLayout && panelTab !== null);
+    document.documentElement.classList.toggle(
+      'map-panel-open',
+      mobileLayout && panelTab !== null && isOverlayVisible,
+    );
     return () => document.documentElement.classList.remove('map-panel-open');
-  }, [mobileLayout, panelTab]);
-
-  const [isOverlayVisible, setIsOverlayVisible] = useState<boolean>(true);
+  }, [mobileLayout, panelTab, isOverlayVisible]);
 
   const [openTripCards, setOpenTripCards] = useState<Record<string, TripCardLayout>>({});
   const [tripCardAnchors, setTripCardAnchors] = useState<Record<string, { x: number; y: number }>>(
     {},
   );
-  const zCounterRef = useRef(40);
+  const zCounterRef = useRef(45);
 
   const {
     materialMode,
@@ -191,6 +195,7 @@ function TravelogueApp({
 
   const isDarkPhase = solarState.phase === 'night' || solarState.phase === 'twilight';
   const uiTheme = getSolarUiTheme(solarState.phase);
+  const pinFlightTheme = flightThemeForPinStyle(mapPinStyle, isDarkPhase);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -214,17 +219,17 @@ function TravelogueApp({
     root.style.setProperty('--panel-surface', uiTheme.panelSurface);
     root.style.setProperty('--dock-bg', uiTheme.dockBg);
     root.style.setProperty('--dock-border', uiTheme.dockBorder);
-    root.style.setProperty('--flight-stroke', uiTheme.flightStroke);
+    root.style.setProperty('--flight-stroke', pinFlightTheme.flightStroke);
     root.style.setProperty('--flight-stroke-width', uiTheme.flightStrokeWidth);
-    root.style.setProperty('--flight-plane-fill', uiTheme.flightPlaneFill);
-    root.style.setProperty('--flight-plane-stroke', uiTheme.flightPlaneStroke);
+    root.style.setProperty('--flight-plane-fill', pinFlightTheme.flightPlaneFill);
+    root.style.setProperty('--flight-plane-stroke', pinFlightTheme.flightPlaneStroke);
     root.style.setProperty('--landmass-stroke', uiTheme.landmassStroke);
     root.style.setProperty('--landmass-stroke-width', uiTheme.landmassStrokeWidth);
 
     root.classList.toggle('solar-manual-mode', isTimeOverridden);
     root.classList.toggle('solar-clock-mode', !isTimeOverridden);
     root.classList.toggle('solar-dark-phase', isDarkPhase);
-  }, [solarState, uiTheme, isTimeOverridden, isDarkPhase]);
+  }, [solarState, uiTheme, pinFlightTheme, isTimeOverridden, isDarkPhase, mapPinStyle]);
 
   const handleCountriesLoaded = useCallback((codes: string[]) => {
     setCountryCodes(codes);
@@ -331,6 +336,11 @@ function TravelogueApp({
     setOpenTripCards({});
     resetIdleTimer();
   }, [resetIdleTimer]);
+
+  const chronicleNavRef = useRef<(tripId: string) => void>(() => {});
+  const bindChronicleNav = useCallback((fn: (tripId: string) => void) => {
+    chronicleNavRef.current = fn;
+  }, []);
 
   const appContent = (
     <div className="relative h-full w-full overflow-hidden">
@@ -457,42 +467,24 @@ function TravelogueApp({
         }}
       />
 
-      {(!panelTab || !mobileLayout) &&
-        openTripIds.map((tripId) => {
-          const trip = trips.find((t) => t.id === tripId);
-          const layout = openTripCards[tripId];
-          const anchor = tripCardAnchors[tripId];
-          if (!trip || !layout || !anchor) return null;
-
-          const position = pinAnchoredCardPosition(
-            anchor.x,
-            anchor.y,
-            layout.offsetX,
-            layout.offsetY,
-          );
-          const cardZIndex =
-            !mobileLayout && panelTab ? layout.z + 24 : layout.z;
-
-          return (
-            <TripDetailCard
-              key={tripId}
-              trip={trip}
-              layout={layout}
-              position={position}
-              cardZIndex={cardZIndex}
-              isDarkPhase={isDarkPhase}
-              isOverlayVisible={isOverlayVisible}
-              isPrimaryOpenCard={tripId === topTripCardId}
-              onClose={() => closeTripPanel(tripId)}
-              onFocus={() => focusTripPanel(tripId)}
-              onMoveOffset={(offsetX, offsetY) => moveTripPanelOffset(tripId, offsetX, offsetY)}
-              onOpenChronicle={() => {
-                setPanelTab('sketchbook');
-                resetIdleTimer();
-              }}
-            />
-          );
-        })}
+      {(!panelTab || !mobileLayout) && (
+        <OpenTripCardLayer
+          openTripIds={openTripIds}
+          trips={trips}
+          openTripCards={openTripCards}
+          tripCardAnchors={tripCardAnchors}
+          mobileLayout={mobileLayout}
+          panelTab={panelTab}
+          topTripCardId={topTripCardId}
+          isDarkPhase={isDarkPhase}
+          isOverlayVisible={isOverlayVisible}
+          onCloseTrip={closeTripPanel}
+          onFocusTrip={focusTripPanel}
+          onMoveOffset={moveTripPanelOffset}
+          onOpenPanelTab={() => setPanelTab('sketchbook')}
+          resetIdleTimer={resetIdleTimer}
+        />
+      )}
       <EnvironmentDebugBar isOverlayVisible={isOverlayVisible} />
     </div>
   );
@@ -516,10 +508,114 @@ function TravelogueApp({
       onOpenChronicleFromCard={() => {
         setPanelTab('sketchbook');
         resetIdleTimer();
+        if (topTripCardId) {
+          requestAnimationFrame(() => chronicleNavRef.current(topTripCardId));
+        }
       }}
       onResetIdle={resetIdleTimer}
     >
-      {appContent}
+      <PanelChromeProvider>
+        <ChronicleNavBinder bind={bindChronicleNav} />
+        {appContent}
+      </PanelChromeProvider>
     </TvFocusProvider>
+  );
+}
+
+function ChronicleNavBinder({ bind }: { bind: (fn: (tripId: string) => void) => void }) {
+  const tv = useTvFocus();
+  const { expandPanelSheet } = usePanelChrome();
+
+  useEffect(() => {
+    bind((tripId: string) => {
+      expandPanelSheet();
+      requestAnimationFrame(() => tv.scrollChronicleToTripId(tripId));
+    });
+    return () => bind(() => {});
+  }, [bind, tv, expandPanelSheet]);
+
+  return null;
+}
+
+interface OpenTripCardLayerProps {
+  openTripIds: string[];
+  trips: Trip[];
+  openTripCards: Record<string, TripCardLayout>;
+  tripCardAnchors: Record<string, { x: number; y: number }>;
+  mobileLayout: boolean;
+  panelTab: PanelTab | null;
+  topTripCardId: string | null;
+  isDarkPhase: boolean;
+  isOverlayVisible: boolean;
+  onCloseTrip: (tripId: string) => void;
+  onFocusTrip: (tripId: string) => void;
+  onMoveOffset: (tripId: string, offsetX: number, offsetY: number) => void;
+  onOpenPanelTab: () => void;
+  resetIdleTimer: () => void;
+}
+
+function OpenTripCardLayer({
+  openTripIds,
+  trips,
+  openTripCards,
+  tripCardAnchors,
+  mobileLayout,
+  panelTab,
+  topTripCardId,
+  isDarkPhase,
+  isOverlayVisible,
+  onCloseTrip,
+  onFocusTrip,
+  onMoveOffset,
+  onOpenPanelTab,
+  resetIdleTimer,
+}: OpenTripCardLayerProps) {
+  const tv = useTvFocus();
+  const { expandPanelSheet } = usePanelChrome();
+
+  const openChronicleForTrip = useCallback(
+    (tripId: string) => {
+      onOpenPanelTab();
+      resetIdleTimer();
+      expandPanelSheet();
+      requestAnimationFrame(() => tv.scrollChronicleToTripId(tripId));
+    },
+    [onOpenPanelTab, resetIdleTimer, expandPanelSheet, tv],
+  );
+
+  return (
+    <>
+      {openTripIds.map((tripId) => {
+        const trip = trips.find((t) => t.id === tripId);
+        const layout = openTripCards[tripId];
+        const anchor = tripCardAnchors[tripId];
+        if (!trip || !layout || !anchor) return null;
+
+        const position = pinAnchoredCardPosition(
+          anchor.x,
+          anchor.y,
+          layout.offsetX,
+          layout.offsetY,
+        );
+        const cardZIndex = Math.max(45, !mobileLayout && panelTab ? layout.z + 24 : layout.z);
+
+        return (
+          <TripDetailCard
+            key={tripId}
+            trip={trip}
+            layout={layout}
+            position={position}
+            cardZIndex={cardZIndex}
+            isDarkPhase={isDarkPhase}
+            isOverlayVisible={isOverlayVisible}
+            isPrimaryOpenCard={tripId === topTripCardId}
+            onClose={() => onCloseTrip(tripId)}
+            onFocus={() => onFocusTrip(tripId)}
+            onMoveOffset={(offsetX, offsetY) => onMoveOffset(tripId, offsetX, offsetY)}
+            onOpenChronicle={() => openChronicleForTrip(tripId)}
+          />
+        );
+      })}
+    </>
   );
 }

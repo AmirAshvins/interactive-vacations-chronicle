@@ -1,4 +1,5 @@
 import { projectCoordinates } from './mapProjection';
+import { zoomLayerAttenuation } from './mapGestures';
 
 export { MAP_VIEWBOX, MAP_VIEWBOX_STRING } from './mapViewBox';
 export { projectCoordinates, unprojectCoordinates } from './mapProjection';
@@ -72,29 +73,23 @@ export function getFlightDashStyle(flightId: string, denseLayer: boolean): Fligh
 export function getFlightDashStyleForZoom(
   flightId: string,
   denseLayer: boolean,
-  zoom: number,
+  _zoom: number,
 ): FlightDashStyle {
-  const base = getFlightDashStyle(flightId, denseLayer);
-  const scale = 1 / Math.max(1, zoom);
-  const [dash, gap] = base.strokeDasharray.split(' ').map(Number);
-
-  return {
-    strokeDasharray: `${(dash * scale).toFixed(2)} ${(gap * scale).toFixed(2)}`,
-    strokeDashoffset: Number((base.strokeDashoffset * scale).toFixed(2)),
-    opacity: base.opacity,
-  };
+  // Dashes are in SVG viewBox units — they already appear constant-size because
+  // the canvas applies the viewBox→screen transform before stroking. No zoom scaling needed.
+  return getFlightDashStyle(flightId, denseLayer);
 }
 
-/** Keep arc stroke visually thin as the map zoom transform scales the layer up. */
+/** Keep arc stroke readable as the map zoom transform scales the layer up. */
 export function getFlightStrokeScale(zoom: number): number {
-  return 1 / Math.max(1, zoom);
+  return Math.max(0.58, zoomLayerAttenuation(zoom, 0.42));
 }
 
-/** Counter map zoom so planes stay visible; slightly larger when zoomed in. */
+/** Planes stay visible when zoomed in — gradual boost with zoom level. */
 export function getFlightPlaneScale(zoom: number): number {
-  const counter = 1 / Math.max(1, zoom);
-  const boost = 1 + Math.min(0.5, (zoom - 1) * 0.2);
-  return counter * 0.92 * boost;
+  const counter = zoomLayerAttenuation(zoom, 0.36);
+  const boost = 1 + Math.min(1.5, (zoom - 1) * 0.1);
+  return counter * boost * 1.12;
 }
 
 /**

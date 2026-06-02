@@ -64,7 +64,11 @@ export function useBottomSheetDrag({
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       }
 
-      const next = Math.max(0, dy);
+      // Allow upward drag (negative dy) from peek position — shows partial expand preview.
+      // Clamp: can't drag below 0 (already at bottom of content), can't drag up past -80px.
+      const next = startSnapRef.current === 'expanded'
+        ? Math.max(0, dy)   // from expanded: only downward drag
+        : Math.max(-80, dy); // from peek: allow a little upward drag for preview
       offsetYRef.current = next;
       setOffsetY(next);
     },
@@ -95,10 +99,15 @@ export function useBottomSheetDrag({
           } else {
             setSnap('expanded');
           }
-        } else if (draggingUp && Math.abs(dy) >= EXPAND_THRESHOLD_PX) {
-          setSnap('expanded');
-        } else if (draggingDown && offsetYRef.current >= dismissThresholdPx) {
-          onDismiss();
+        } else {
+          // Starting from peek
+          if (draggingUp && Math.abs(dy) >= EXPAND_THRESHOLD_PX) {
+            setSnap('expanded');
+          } else if (draggingDown && offsetYRef.current >= dismissThresholdPx) {
+            onDismiss();
+          } else {
+            setSnap('peek');
+          }
         }
       }
 

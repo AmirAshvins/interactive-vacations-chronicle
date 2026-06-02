@@ -17,15 +17,7 @@ function drawNeedlePinBody(
   colors: NeedlePinColors,
   selected: boolean,
   tvFocused: boolean,
-  withShadow: boolean,
 ) {
-  if (withShadow) {
-    ctx.shadowColor = 'rgba(15, 23, 42, 0.22)';
-    ctx.shadowBlur = 1.5;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 1;
-  }
-
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(0.55, -14.5);
@@ -37,10 +29,6 @@ function drawNeedlePinBody(
   ctx.lineWidth = 0.35;
   ctx.fill();
   ctx.stroke();
-
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
 
   ctx.beginPath();
   ctx.ellipse(0, -15.8, 4.8, 1.15, 0, 0, Math.PI * 2);
@@ -85,7 +73,6 @@ function drawDotPinBody(
   selected: boolean,
   tvFocused: boolean,
   isDarkPhase: boolean,
-  isDragging: boolean,
 ) {
   const isCopper = trip.material === 'copper';
   let fill = isCopper ? '#991b1b' : '#dc2626';
@@ -95,10 +82,6 @@ function drawDotPinBody(
 
   let stroke = '#fff';
   let lineWidth = selected ? 2.25 : 1.75;
-  if (isDragging) {
-    stroke = '#fecaca';
-    lineWidth = 2.5;
-  }
   if (tvFocused) {
     stroke = '#fde047';
     lineWidth = 2.75;
@@ -138,28 +121,20 @@ export function drawMapPin(
   ctx: CanvasRenderingContext2D,
   entry: PinCanvasEntry,
   pinStyle: MapPinStyleId,
-  pinScale: number,
+  pinVisualScale: number,
   isDarkPhase: boolean,
-  withShadow: boolean,
 ) {
   ctx.save();
   ctx.translate(entry.x, entry.y);
-  ctx.scale(pinScale, pinScale);
+  ctx.scale(pinVisualScale, pinVisualScale);
 
   const useNeedle = pinStyle !== 'dot-classic';
   const colors = needleColorsForTrip(pinStyle, entry.trip.material === 'copper');
 
   if (useNeedle) {
-    drawNeedlePinBody(ctx, colors, entry.selected, entry.tvFocused, withShadow);
+    drawNeedlePinBody(ctx, colors, entry.selected, entry.tvFocused);
   } else {
-    drawDotPinBody(
-      ctx,
-      entry.trip,
-      entry.selected,
-      entry.tvFocused,
-      isDarkPhase,
-      entry.isDragging,
-    );
+    drawDotPinBody(ctx, entry.trip, entry.selected, entry.tvFocused, isDarkPhase);
   }
 
   if (entry.stackCount > 1) {
@@ -173,11 +148,10 @@ export function drawMapPins(
   ctx: CanvasRenderingContext2D,
   entries: PinCanvasEntry[],
   pinStyle: MapPinStyleId,
-  pinScale: number,
+  pinVisualScale: number,
   isDarkPhase: boolean,
-  withShadow: boolean,
 ) {
   for (const entry of entries) {
-    drawMapPin(ctx, entry, pinStyle, pinScale, isDarkPhase, withShadow);
+    drawMapPin(ctx, entry, pinStyle, pinVisualScale, isDarkPhase);
   }
 }

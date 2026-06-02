@@ -12,7 +12,7 @@ import {
   type MapCanvasDrawState,
   type MapCanvasTheme,
 } from '../canvas/mapCanvasRenderer';
-import { type PinCanvasEntry } from '../canvas/mapPinCanvas';
+import type { PinCanvasEntry } from '../canvas/mapPinCanvas';
 import type { MapPinStyleId } from '../data/mapPinStyles';
 import type { MapPinStack } from '../utils/mapPinDisplay';
 import { projectCoordinates, unprojectCoordinates } from '../utils/mapProjection';
@@ -35,12 +35,12 @@ interface MapInteractionCanvasProps {
   flights: FlightPathInput[];
   pinStacks: MapPinStack[];
   pinScale: number;
+  pinVisualScale: number;
   mapPinStyle: MapPinStyleId;
   openTripIds: string[];
   tvFocusedPinIds: string[];
   pinDrag: { tripId: string; lat: number; lng: number } | null;
   isDarkPhase: boolean;
-  pinShadows: boolean;
   showFlights: boolean;
   denseFlightLayer: boolean;
   zoom: number;
@@ -55,12 +55,12 @@ const MapInteractionCanvas = forwardRef<MapInteractionCanvasHandle, MapInteracti
       flights,
       pinStacks,
       pinScale,
+      pinVisualScale,
       mapPinStyle,
       openTripIds,
       tvFocusedPinIds,
       pinDrag,
       isDarkPhase,
-      pinShadows,
       showFlights,
       denseFlightLayer,
       zoom,
@@ -114,6 +114,13 @@ const MapInteractionCanvas = forwardRef<MapInteractionCanvasHandle, MapInteracti
       });
     }, [pinStacks, openTripIds, tvFocusedPinIds, pinDrag]);
 
+    const drawFrame = useCallback((now: number) => {
+      const canvas = canvasRef.current;
+      const state = drawStateRef.current;
+      if (!canvas || !state) return;
+      renderMapCanvas(canvas, state, now);
+    }, []);
+
     const drawStateRef = useRef<MapCanvasDrawState | null>(null);
 
     drawStateRef.current = {
@@ -126,18 +133,11 @@ const MapInteractionCanvas = forwardRef<MapInteractionCanvasHandle, MapInteracti
       flights: flightEntries,
       pins: pinEntries,
       pinScale,
+      pinVisualScale,
       mapPinStyle,
       isDarkPhase,
-      pinShadows,
       theme,
     };
-
-    const drawFrame = useCallback((now: number) => {
-      const canvas = canvasRef.current;
-      const state = drawStateRef.current;
-      if (!canvas || !state) return;
-      renderMapCanvas(canvas, state, now);
-    }, []);
 
     useEffect(() => {
       const el = containerRef.current;
@@ -163,9 +163,9 @@ const MapInteractionCanvas = forwardRef<MapInteractionCanvasHandle, MapInteracti
       flightEntries,
       pinEntries,
       pinScale,
+      pinVisualScale,
       mapPinStyle,
       isDarkPhase,
-      pinShadows,
       showFlights,
       denseFlightLayer,
       zoom,

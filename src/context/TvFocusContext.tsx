@@ -120,6 +120,8 @@ interface TvFocusContextValue {
   mapControlTarget: MapControlTarget;
   isMapControlFocused: (target: MapControlTarget) => boolean;
   registerChronicleScroller: (fn: (index: number) => void) => void;
+  registerChronicleTripScroller: (fn: ((tripId: string) => void) | null) => void;
+  scrollChronicleToTripId: (tripId: string) => void;
   registerArchiveActions: (actions: TvArchiveActions | null) => void;
   registerImportDialog: (state: TvImportDialogState | null) => void;
   registerMapViewportActions: (actions: MapViewportActions | null) => void;
@@ -175,6 +177,7 @@ export function TvFocusProvider({
 }: TvFocusProviderProps) {
   const [state, setState] = useState<TvFocusState>(INITIAL_STATE);
   const chronicleScrollRef = useRef<((index: number) => void) | null>(null);
+  const chronicleTripScrollRef = useRef<((tripId: string) => void) | null>(null);
   const archiveActionsRef = useRef<TvArchiveActions | null>(null);
   const importDialogRef = useRef<TvImportDialogState | null>(null);
   const mapViewportActionsRef = useRef<MapViewportActions | null>(null);
@@ -183,6 +186,26 @@ export function TvFocusProvider({
   const registerChronicleScroller = useCallback((fn: (index: number) => void) => {
     chronicleScrollRef.current = fn;
   }, []);
+
+  const registerChronicleTripScroller = useCallback((fn: ((tripId: string) => void) | null) => {
+    chronicleTripScrollRef.current = fn;
+  }, []);
+
+  const scrollChronicleToTripId = useCallback(
+    (tripId: string) => {
+      chronicleTripScrollRef.current?.(tripId);
+      const index = trips.findIndex((t) => t.id === tripId);
+      if (index >= 0) {
+        chronicleScrollRef.current?.(index);
+        setState((s) => ({
+          ...s,
+          chronicleIndex: index,
+          panelTabIndex: 0,
+        }));
+      }
+    },
+    [trips],
+  );
 
   const registerArchiveActions = useCallback((actions: TvArchiveActions | null) => {
     archiveActionsRef.current = actions;
@@ -582,6 +605,9 @@ export function TvFocusProvider({
         setState((s) => ({ ...s, zone: 'map' }));
       } else {
         onOpenChronicleFromCard();
+        if (topTripCardId) {
+          scrollChronicleToTripId(topTripCardId);
+        }
         setState((s) => ({
           ...s,
           zone: 'chronicle',
@@ -602,6 +628,7 @@ export function TvFocusProvider({
     onCloseTrip,
     onOpenChronicleFromCard,
     onResetIdle,
+    scrollChronicleToTripId,
   ]);
 
   useEffect(() => {
@@ -661,6 +688,8 @@ export function TvFocusProvider({
       isMapControlFocused: (target) =>
         enabled && state.zone === 'map-controls' && state.mapControlTarget === target,
       registerChronicleScroller,
+      registerChronicleTripScroller,
+      scrollChronicleToTripId,
       registerArchiveActions,
       registerImportDialog,
       registerMapViewportActions,
@@ -669,6 +698,8 @@ export function TvFocusProvider({
       enabled,
       state,
       registerChronicleScroller,
+      registerChronicleTripScroller,
+      scrollChronicleToTripId,
       registerArchiveActions,
       registerImportDialog,
       registerMapViewportActions,
@@ -695,6 +726,8 @@ export function useTvFocus(): TvFocusContextValue {
       mapControlTarget: 'fullscreen',
       isMapControlFocused: () => false,
       registerChronicleScroller: () => {},
+      registerChronicleTripScroller: () => {},
+      scrollChronicleToTripId: () => {},
       registerArchiveActions: () => {},
       registerImportDialog: () => {},
       registerMapViewportActions: () => {},

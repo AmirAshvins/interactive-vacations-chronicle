@@ -10,7 +10,7 @@ import {
 } from '../utils/flightArc';
 import { resolveFlightEndpoints, type HomeOrigin } from '../utils/flightRoutes';
 import { buildMapPinStacks, type MapPinStack } from '../utils/mapPinDisplay';
-import type { MapPinStyleId } from '../data/mapPinStyles';
+import { flightThemeForPinStyle, type MapPinStyleId } from '../data/mapPinStyles';
 import PinStackPicker from './PinStackPicker';
 import MapInteractionCanvas, {
   type MapInteractionCanvasHandle,
@@ -22,12 +22,12 @@ import {
 } from '../utils/mapPinHitTest';
 import { getCountryName, normalizeCountryCode } from '../utils/countryUtils';
 import { latLngToScreen } from '../utils/tripCardPosition';
-import { getSolarUiTheme } from '../utils/solarTheme';
 import { useTvFocus } from '../context/TvFocusContext';
 import {
   clampMapPan,
   focalFromClient,
   getPinScreenScale,
+  getPinVisualScale,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
   MAP_ZOOM_STEP,
@@ -104,7 +104,7 @@ export default function WorldMap({
   openTripCount = 0,
   onCloseAllTrips,
 }: WorldMapProps) {
-  const { tvInteraction } = useEnvironmentContext();
+  const { tvInteraction, mobileLayout } = useEnvironmentContext();
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const [mapNodes, setMapNodes] = useState<ParsedNode[]>([]);
   const [zoom, setZoom] = useState(1.0);
@@ -242,14 +242,12 @@ export default function WorldMap({
     [trips, homeOrigin, openTripIds],
   );
 
-  const canvasTheme = useMemo(() => {
-    const ui = getSolarUiTheme(solarState.phase);
-    return {
-      flightStroke: ui.flightStroke,
-      flightPlaneFill: ui.flightPlaneFill,
-      flightPlaneStroke: ui.flightPlaneStroke,
-    };
-  }, [solarState.phase]);
+  const isDarkPhase = solarState.phase === 'night' || solarState.phase === 'twilight';
+
+  const canvasTheme = useMemo(
+    () => flightThemeForPinStyle(mapPinStyle, isDarkPhase),
+    [mapPinStyle, isDarkPhase],
+  );
 
   const isVisited = (countryId: string) =>
     highlightVisited && visitedSet.has(normalizeCountryCode(countryId));
@@ -340,8 +338,6 @@ export default function WorldMap({
     },
     [clientToLatLng, onTripLocationChange, pinDrag, trips],
   );
-
-  const isDarkPhase = solarState.phase === 'night' || solarState.phase === 'twilight';
 
   const getPinHitContext = useCallback((): PinHitTestContext | null => {
     const svg = mapSvgRef.current;
@@ -669,6 +665,7 @@ export default function WorldMap({
   }, [tvFocus, mapViewportActions]);
 
   const pinScale = getPinScreenScale(zoom);
+  const pinVisualScale = getPinVisualScale(zoom);
   const showMapPanZoom = tvInteraction;
   const showMapReset = tvInteraction && zoom > MAP_MIN_ZOOM;
   const showCloseAllCards = tvInteraction && openTripCount > 0 && !!onCloseAllTrips;
@@ -819,14 +816,17 @@ export default function WorldMap({
       <div className="spotlight-overlay" />
 
       <div
-        className={`map-transform-layer${isGesturing || isDragging ? ' map-transform-layer--active' : ''}`}
-        style={{
-          transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
-          transition: isGesturing ? 'none' : 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-        }}
+        className={`map-scrollport${mobileLayout ? ' map-scrollport--mobile' : ''}`}
       >
         <div
-          className="map-aspect-box"
+          className={`map-transform-layer${isGesturing || isDragging ? ' map-transform-layer--active' : ''}`}
+          style={{
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            transition: isGesturing ? 'none' : 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          <div
+            className={`map-aspect-box${mobileLayout ? ' map-aspect-box--scrollable' : ''}`}
           onPointerDown={handleAspectPointerDown}
           onPointerMove={handleAspectPointerMove}
           onPointerUp={handleAspectPointerUp}
@@ -885,12 +885,12 @@ export default function WorldMap({
                 flights={flightPaths}
                 pinStacks={mapPinStacks}
                 pinScale={pinScale}
+                pinVisualScale={pinVisualScale}
                 mapPinStyle={mapPinStyle}
                 openTripIds={openTripIds}
                 tvFocusedPinIds={tvFocusedPinIds}
                 pinDrag={pinDrag}
                 isDarkPhase={isDarkPhase}
-                pinShadows={!isDragging && !isGesturing}
                 showFlights={showFlightPaths && mapNodes.length > 0}
                 denseFlightLayer={denseFlightLayer}
                 zoom={zoom}
@@ -904,6 +904,7 @@ export default function WorldMap({
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {pinStackPicker &&

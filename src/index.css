@@ -29,6 +29,9 @@
   --flight-plane-stroke: rgba(255, 255, 255, 0.88);
   --landmass-stroke: rgba(92, 68, 38, 0.32);
   --landmass-stroke-width: 0.55;
+
+  --map-mobile-min-width: 420px;
+  --map-mobile-min-height: 245px;
   
   /* Font Family Definitions */
   --font-serif: 'Cormorant Garamond', Georgia, serif;
@@ -198,6 +201,14 @@ html.solar-dark-phase body {
   backface-visibility: hidden;
 }
 
+.map-scrollport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .map-transform-layer--active {
   will-change: transform;
 }
@@ -206,7 +217,6 @@ html.solar-dark-phase body {
   position: relative;
   width: min(100%, calc((100vh - 180px) * 1.71));
   height: min(100%, calc(100vw / 1.71));
-  max-width: 1280px;
   aspect-ratio: 784.077 / 458.627;
 }
 
@@ -571,6 +581,7 @@ html.solar-dark-phase body {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  outline: none;
 }
 
 .pin-stack-picker-spacer {
@@ -655,6 +666,10 @@ html.solar-dark-phase body {
   box-shadow:
     0 0 0 4px rgba(220, 38, 38, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.trip-detail-card {
+  z-index: 45;
 }
 
 .trip-detail-card-header {
@@ -904,7 +919,7 @@ html.solar-dark-phase body {
   background: var(--dock-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 50;
+  z-index: 28;
   pointer-events: auto;
   transition:
     background var(--solar-transition),

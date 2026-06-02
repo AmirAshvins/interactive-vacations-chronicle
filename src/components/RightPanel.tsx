@@ -1,6 +1,7 @@
 import { BookOpen, Sliders, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTvFocus } from '../context/TvFocusContext';
+import { usePanelChrome } from '../context/PanelChromeContext';
 import { useEnvironmentContext } from '../context/EnvironmentContext';
 import { useBottomSheetDrag } from '../hooks/useBottomSheetDrag';
 import { panelHudVisibilityClasses } from '../utils/panelVisibility';
@@ -84,6 +85,7 @@ export default function RightPanel({
   const isOpen = tab !== null;
   const isVisible = isOpen && isOverlayVisible;
   const tv = useTvFocus();
+  const panelChrome = usePanelChrome();
   const { mobileLayout } = useEnvironmentContext();
   const hudVisibility = panelHudVisibilityClasses(mobileLayout, isOpen, isOverlayVisible);
 
@@ -97,6 +99,15 @@ export default function RightPanel({
   }, [isVisible, sheetDrag.reset]);
 
   useEffect(() => {
+    if (!mobileLayout || !isVisible) {
+      panelChrome.registerExpandSheet(null);
+      return;
+    }
+    panelChrome.registerExpandSheet(() => sheetDrag.setSnap('expanded'));
+    return () => panelChrome.registerExpandSheet(null);
+  }, [mobileLayout, isVisible, panelChrome, sheetDrag.setSnap]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle(
       'map-sheet-expanded',
       mobileLayout && isVisible && sheetDrag.snap === 'expanded',
@@ -104,8 +115,9 @@ export default function RightPanel({
     return () => document.documentElement.classList.remove('map-sheet-expanded');
   }, [mobileLayout, isVisible, sheetDrag.snap]);
 
+  // While dragging: follow finger exactly. After release: snap animates via CSS transition.
   const sheetTransform =
-    mobileLayout && isVisible
+    mobileLayout && isVisible && sheetDrag.isDragging
       ? `translateY(${sheetDrag.offsetY}px)`
       : undefined;
 
@@ -118,7 +130,6 @@ export default function RightPanel({
         backdropFilter: 'blur(28px)',
         WebkitBackdropFilter: 'blur(28px)',
         transform: sheetTransform,
-        transition: sheetDrag.isDragging ? 'none' : undefined,
       }}
     >
       <div
@@ -130,9 +141,6 @@ export default function RightPanel({
         aria-label="Drag — up for full height, down to close"
       >
         <div className="right-panel-sheet-handle" aria-hidden />
-        {mobileLayout && (
-          <span className="right-panel-sheet-hint">Swipe up for full screen</span>
-        )}
       </div>
 
       <div className="right-panel-header flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">

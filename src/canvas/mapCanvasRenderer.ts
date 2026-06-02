@@ -33,9 +33,9 @@ export interface MapCanvasDrawState {
   flights: FlightCanvasEntry[];
   pins: PinCanvasEntry[];
   pinScale: number;
+  pinVisualScale: number;
   mapPinStyle: MapPinStyleId;
   isDarkPhase: boolean;
-  pinShadows: boolean;
   theme: MapCanvasTheme;
 }
 
@@ -103,14 +103,31 @@ function drawPlane(
   ctx.restore();
 }
 
-function drawFlightPlanes(ctx: CanvasRenderingContext2D, state: MapCanvasDrawState, now: number) {
+const FLIGHT_REST_AT_DEST_SEC = 0.3;
+
+function flightProgress(now: number, flight: FlightCanvasEntry): number {
+  const cycleLength = flight.duration + FLIGHT_REST_AT_DEST_SEC;
+  const cyclePhase =
+    (((now / 1000 - flight.animationDelay) % cycleLength) + cycleLength) % cycleLength;
+  if (cyclePhase >= flight.duration) {
+    return 1;
+  }
+  return cyclePhase / flight.duration;
+}
+
+function drawFlightPlanes(
+  ctx: CanvasRenderingContext2D,
+  state: MapCanvasDrawState,
+  now: number,
+  _vbScale: number,
+) {
   if (!state.showFlights) return;
 
   const planeScale = getFlightPlaneScale(state.zoom) * 1.05;
 
   for (const flight of state.flights) {
-    const elapsed = (now / 1000 - flight.animationDelay) % flight.duration;
-    const t = elapsed < 0 ? (elapsed + flight.duration) / flight.duration : elapsed / flight.duration;
+    const t = flightProgress(now, flight);
+    if (t >= 1) continue; // resting at destination — invisible
     const { x, y, angle } = pointOnQuadraticBezier(flight.bezier, t);
     drawPlane(ctx, x, y, angle, planeScale, state.theme);
   }
@@ -124,25 +141,36 @@ export function renderMapCanvas(
   const ctx = canvas.getContext('2d');
   if (!ctx || state.width <= 0 || state.height <= 0) return;
 
-  canvas.width = Math.round(state.width * state.dpr);
-  canvas.height = Math.round(state.height * state.dpr);
-  canvas.style.width = `${state.width}px`;
-  canvas.style.height = `${state.height}px`;
+  // Only resize the backing store when dimensions actually change — avoids
+  // clearing the GPU texture every frame when only content changes.
+  const physW = Math.round(state.width * state.dpr);
+  const physH = Math.round(state.height * state.dpr);
+  if (canvas.width !== physW || canvas.height !== physH) {
+    canvas.width = physW;
+    canvas.height = physH;
+    canvas.style.width = `${state.width}px`;
+    canvas.style.height = `${state.height}px`;
+  }
 
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   ctx.clearRect(0, 0, state.width, state.height);
 
+  // Everything is drawn in SVG viewBox space.
+  // The viewBox transform maps 784×458 coords → CSS pixels.
+  const { scale: vbScale } = getViewBoxFit(state.width, state.height);
+
   ctx.save();
   applyViewBoxTransform(ctx, state.width, state.height);
+
   drawFlightArcs(ctx, state);
-  drawFlightPlanes(ctx, state, now);
-  drawMapPins(
-    ctx,
-    state.pins,
-    state.mapPinStyle,
-    state.pinScale,
-    state.isDarkPhase,
-    state.pinShadows,
-  );
+  drawFlightPlanes(ctx, state, now, vbScale);
+
+  // Regular pins first, then stacked (badge) pins on top so badges are never
+  // occluded by neighbouring plain pins.
+  const regularPins = state.pins.filter(p => p.stackCount <= 1);
+  const stackedPins = state.pins.filter(p => p.stackCount > 1);
+  drawMapPins(ctx, regularPins, state.mapPinStyle, state.pinVisualScale, state.isDarkPhase);
+  drawMapPins(ctx, stackedPins, state.mapPinStyle, state.pinVisualScale, state.isDarkPhase);
+
   ctx.restore();
 }

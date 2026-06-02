@@ -1,6 +1,6 @@
 export const MAP_MIN_ZOOM = 1;
-export const MAP_MAX_ZOOM = 4;
-export const MAP_ZOOM_STEP = 1.22;
+export const MAP_MAX_ZOOM = 12;
+export const MAP_ZOOM_STEP = 1.14;
 export const MAP_PAN_STEP_RATIO = 0.14;
 
 export interface MapPan {
@@ -87,7 +87,22 @@ export function stepMapPan(
   return clampMapPan(next, zoom, containerWidth, containerHeight);
 }
 
-/** Pin diameter shrinks as zoom increases so nearby cities stay separable. */
+/** Softer than 1/zoom — map layers stay readable across a wide zoom range. */
+export function zoomLayerAttenuation(zoom: number, exponent = 0.48): number {
+  return 1 / Math.pow(Math.max(1, zoom), exponent);
+}
+
+/** Hit-test scale for pins — grows slightly as you zoom in for easier targeting. */
 export function getPinScreenScale(zoom: number): number {
-  return Math.max(0.32, Math.min(1, 1 / zoom));
+  const inv = zoomLayerAttenuation(zoom, 0.48);
+  const zoomLift = 1 + (zoom - 1) * 0.055;
+  return Math.max(0.72, Math.min(1.45, inv * zoomLift));
+}
+
+/** Visual pin size on canvas — smaller than hit target on dense maps. */
+export const PIN_VISUAL_SCALE = 0.76;
+
+export function getPinVisualScale(zoom: number): number {
+  const zoomLift = 1 + (zoom - 1) * 0.04;
+  return getPinScreenScale(zoom) * PIN_VISUAL_SCALE * zoomLift;
 }
