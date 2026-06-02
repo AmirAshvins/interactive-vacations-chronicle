@@ -44,6 +44,8 @@ interface RightPanelProps {
   onToggleFlightPaths: () => void;
   highlightVisited: boolean;
   onToggleHighlightVisited: () => void;
+  mapPinStyle: import('../data/mapPinStyles').MapPinStyleId;
+  onMapPinStyleChange: (style: import('../data/mapPinStyles').MapPinStyleId) => void;
 }
 
 export default function RightPanel({
@@ -76,6 +78,8 @@ export default function RightPanel({
   onToggleFlightPaths,
   highlightVisited,
   onToggleHighlightVisited,
+  mapPinStyle,
+  onMapPinStyleChange,
 }: RightPanelProps) {
   const isOpen = tab !== null;
   const isVisible = isOpen && isOverlayVisible;
@@ -92,6 +96,14 @@ export default function RightPanel({
     if (!isVisible) sheetDrag.reset();
   }, [isVisible, sheetDrag.reset]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle(
+      'map-sheet-expanded',
+      mobileLayout && isVisible && sheetDrag.snap === 'expanded',
+    );
+    return () => document.documentElement.classList.remove('map-sheet-expanded');
+  }, [mobileLayout, isVisible, sheetDrag.snap]);
+
   const sheetTransform =
     mobileLayout && isVisible
       ? `translateY(${sheetDrag.offsetY}px)`
@@ -101,7 +113,7 @@ export default function RightPanel({
     <div
       className={`right-panel fixed right-6 top-6 bottom-28 z-40 flex w-[min(400px,30vw)] min-w-[320px] flex-col overflow-hidden rounded-2xl border tv-hud-element ${hudVisibility} ${
         sheetDrag.isDragging ? 'right-panel--dragging' : ''
-      } ${isDarkPhase ? 'right-panel-dark' : 'right-panel-light'}`}
+      } ${sheetDrag.snap === 'expanded' ? 'right-panel--expanded' : ''} ${isDarkPhase ? 'right-panel-dark' : 'right-panel-light'}`}
       style={{
         backdropFilter: 'blur(28px)',
         WebkitBackdropFilter: 'blur(28px)',
@@ -115,9 +127,12 @@ export default function RightPanel({
         onPointerMove={sheetDrag.onPointerMove}
         onPointerUp={sheetDrag.onPointerUp}
         onPointerCancel={sheetDrag.onPointerCancel}
-        aria-label="Drag down to close"
+        aria-label="Drag — up for full height, down to close"
       >
         <div className="right-panel-sheet-handle" aria-hidden />
+        {mobileLayout && (
+          <span className="right-panel-sheet-hint">Swipe up for full screen</span>
+        )}
       </div>
 
       <div className="right-panel-header flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
@@ -190,6 +205,8 @@ export default function RightPanel({
             onToggleFlightPaths={onToggleFlightPaths}
             highlightVisited={highlightVisited}
             onToggleHighlightVisited={onToggleHighlightVisited}
+            mapPinStyle={mapPinStyle}
+            onMapPinStyleChange={onMapPinStyleChange}
           />
         )}
       </div>

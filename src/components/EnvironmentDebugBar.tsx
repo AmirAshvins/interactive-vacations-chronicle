@@ -11,12 +11,16 @@ const ZONE_LABELS: Record<string, string> = {
   'trip-card': 'Journey card',
 };
 
+interface EnvironmentDebugBarProps {
+  isOverlayVisible?: boolean;
+}
+
 /** Visible while TV interaction is on — helps debug remote/focus behavior on desktop */
-export default function EnvironmentDebugBar() {
+export default function EnvironmentDebugBar({ isOverlayVisible = true }: EnvironmentDebugBarProps) {
   const env = useEnvironmentContext();
   const tv = useTvFocus();
 
-  if (!env.tvInteraction) return null;
+  if (!env.tvInteraction || !isOverlayVisible) return null;
 
   const zoneLabel = ZONE_LABELS[tv.state.zone] ?? tv.state.zone;
 

@@ -23,10 +23,10 @@
   --panel-surface: rgba(60, 48, 32, 0.04);
   --dock-bg: rgba(255, 255, 255, 0.92);
   --dock-border: rgba(60, 48, 32, 0.1);
-  --flight-stroke: #a58452;
+  --flight-stroke: #2a4568;
   --flight-stroke-width: 0.9;
-  --flight-plane-fill: #b8956a;
-  --flight-plane-stroke: rgba(255, 255, 255, 0.75);
+  --flight-plane-fill: #3d5f85;
+  --flight-plane-stroke: rgba(255, 255, 255, 0.88);
   --landmass-stroke: rgba(92, 68, 38, 0.32);
   --landmass-stroke-width: 0.55;
   
@@ -65,6 +65,7 @@ html.solar-dark-phase body {
   height: 100%;
   position: relative;
   overflow: hidden;
+  background-color: inherit;
 }
 
 .map-stage-gestures {
@@ -180,7 +181,7 @@ html.solar-dark-phase body {
 /* Full-viewport map stage with premium inset margins */
 .map-stage {
   position: absolute;
-  inset: clamp(32px, 5vh, 64px) clamp(32px, 4vw, 72px) clamp(96px, 10vh, 120px);
+  inset: clamp(24px, 4vh, 48px) clamp(24px, 3vw, 56px) clamp(72px, 8vh, 96px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -226,7 +227,6 @@ html.solar-dark-phase body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 235, 180, 0.08) 0%, rgba(0,0,0,0) 70%);
   pointer-events: none;
   z-index: 2;
   opacity: var(--spotlight-opacity);
@@ -336,52 +336,65 @@ html.solar-dark-phase body {
   pointer-events: none;
 }
 
-.flight-layer {
+.map-interaction-canvas-wrap {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  overflow: visible;
-  contain: layout style;
-}
-
-.flight-arc-group {
+  z-index: 25;
   pointer-events: none;
 }
 
-.flight-plane-motion {
-  offset-distance: 0%;
-  offset-rotate: auto;
-  animation: flight-travel var(--flight-duration) linear infinite;
-  animation-delay: var(--flight-delay);
-  will-change: offset-distance;
-}
-
-@keyframes flight-travel {
-  to {
-    offset-distance: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .flight-plane-motion {
-    display: none;
-  }
+.map-interaction-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
 }
 
 .pin-layer {
   position: absolute;
   inset: 0;
   overflow: visible;
-  z-index: 25;
+  z-index: 26;
   pointer-events: none;
 }
 
 .map-pin-anchor {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-/* Native SVG pins — stay sharp under map zoom (no foreignObject rasterization) */
 .map-pin-svg {
+  outline: none;
+}
+
+.map-pin-svg-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: none;
+}
+
+.map-pin-needle-body {
+  filter: drop-shadow(0 1px 1.5px rgba(15, 23, 42, 0.22));
+}
+
+.pin-layer--gesturing .map-pin-needle-body {
+  filter: none;
+}
+
+.map-pin-stack-badge-bg {
+  fill: rgba(15, 23, 42, 0.88);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 0.75;
+}
+
+.map-pin-stack-badge-text {
+  fill: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 6.5px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+
+.world-map-svg {
   cursor: pointer;
   outline: none;
 }
@@ -431,6 +444,195 @@ html.solar-dark-phase body {
   fill: #dc2626;
 }
 
+.map-pin-needle-body {
+  filter: drop-shadow(0 1px 1.5px rgba(15, 23, 42, 0.22));
+}
+
+.map-pin-stack-badge-bg {
+  fill: rgba(15, 23, 42, 0.88);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 0.75;
+}
+
+.map-pin-stack-badge-text {
+  fill: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 6.5px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+
+.pin-layer--gesturing .map-pin-needle-body {
+  filter: none;
+}
+
+.pin-layer--gesturing,
+.map-transform-layer--active .flight-layer {
+  pointer-events: none;
+}
+
+.map-transform-layer--active .flight-layer {
+  shape-rendering: optimizeSpeed;
+}
+
+.pin-layer--gesturing {
+  shape-rendering: optimizeSpeed;
+}
+
+.trip-detail-card-body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Stack picker — matches panel / chronicle styling */
+.pin-stack-picker-root {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(12, 10, 8, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.pin-stack-picker-panel {
+  width: min(420px, 100%);
+  max-height: min(72dvh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--panel-text);
+  box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.18);
+}
+
+.pin-stack-picker-dark {
+  box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.55);
+}
+
+.pin-stack-picker-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pin-stack-picker-eyebrow {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+
+.pin-stack-picker-title {
+  margin: 6px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--panel-text);
+}
+
+.pin-stack-picker-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 9999px;
+  background: var(--panel-surface);
+  color: var(--panel-muted);
+  cursor: pointer;
+  transition:
+    color var(--ui-transition),
+    background var(--ui-transition),
+    border-color var(--ui-transition);
+}
+
+.pin-stack-picker-close:hover {
+  color: var(--panel-text);
+  border-color: rgba(165, 132, 82, 0.35);
+}
+
+.pin-stack-picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pin-stack-picker-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.pin-stack-picker-window {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+}
+
+.pin-stack-picker-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+  border: none;
+  border-bottom: 1px solid var(--panel-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 20px;
+  text-align: left;
+  transition: background var(--ui-transition);
+}
+
+.pin-stack-picker-item:hover,
+.pin-stack-picker-item:focus-visible {
+  background: var(--panel-surface);
+  outline: none;
+}
+
+.pin-stack-picker-item-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pin-stack-picker-item-name {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--panel-text);
+}
+
+.pin-stack-picker-item-meta {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+
+.map-pin-mini {
+  overflow: visible;
+}
+
 .env-tv-interaction .map-pin-svg-dot--tv {
   stroke: #fde047;
   stroke-width: 2.75;
@@ -463,32 +665,12 @@ html.solar-dark-phase body {
 .flight-arc {
   fill: none !important;
   stroke: var(--flight-stroke);
-  /* dasharray / dashoffset / opacity set per route in FlightArc */
-  stroke-width: var(--flight-stroke-width);
+  /* dasharray / dashoffset / opacity / stroke-width set per route in FlightArc */
   stroke-linecap: round;
   shape-rendering: geometricPrecision;
   transition:
     stroke var(--solar-transition),
     opacity var(--solar-transition);
-}
-
-/* Many hub routes — thinner strokes; opacity varies per route inline */
-.flight-layer--dense .flight-arc {
-  stroke-width: calc(var(--flight-stroke-width) * 0.82);
-}
-
-.flight-plane {
-  fill: var(--flight-plane-fill);
-  stroke: var(--flight-plane-stroke);
-  stroke-width: 0.25;
-  shape-rendering: geometricPrecision;
-  transform: scale(0.62);
-  transform-box: fill-box;
-  transform-origin: center;
-  transition:
-    fill var(--solar-transition),
-    stroke var(--solar-transition),
-    filter var(--solar-transition);
 }
 
 .solar-dark-phase .flight-arc {

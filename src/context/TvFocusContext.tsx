@@ -29,7 +29,8 @@ export type MapControlTarget =
   | 'pan-left'
   | 'pan-right'
   | 'reset'
-  | 'close-cards';
+  | 'close-cards'
+  | 'fullscreen';
 
 export interface MapViewportActions {
   zoomIn: () => void;
@@ -37,9 +38,12 @@ export interface MapViewportActions {
   pan: (direction: 'up' | 'down' | 'left' | 'right') => void;
   reset: () => void;
   closeAll: () => void;
+  toggleFullscreen: () => void;
 }
 
 export type TripCardFocusTarget = 'chronicle' | 'close';
+
+export type DockTarget = 'settings' | 'fullscreen';
 
 export type ChronicleArchiveTarget = 'export' | 'import';
 
@@ -47,6 +51,7 @@ export interface TvFocusState {
   zone: TvZone;
   mapPinId: string | null;
   mapControlTarget: MapControlTarget;
+  dockTarget: DockTarget;
   chronicleIndex: number;
   panelTabIndex: number;
   tripCardTarget: TripCardFocusTarget;
@@ -63,8 +68,9 @@ const MAP_CONTROL_NEIGHBORS: Record<
   'pan-left': { right: 'pan-up', up: 'zoom-in' },
   'pan-right': { left: 'pan-up', up: 'zoom-in' },
   'zoom-out': { up: 'pan-down', down: 'reset' },
-  reset: { up: 'zoom-out', right: 'close-cards', left: 'pan-left' },
-  'close-cards': { up: 'zoom-out', left: 'reset' },
+  reset: { up: 'zoom-out', right: 'close-cards', left: 'pan-left', down: 'fullscreen' },
+  'close-cards': { up: 'zoom-out', left: 'reset', right: 'fullscreen' },
+  fullscreen: { up: 'reset', left: 'close-cards' },
 };
 
 export interface TvArchiveActions {
@@ -122,9 +128,10 @@ interface TvFocusContextValue {
 const TvFocusContext = createContext<TvFocusContextValue | null>(null);
 
 const INITIAL_STATE: TvFocusState = {
-  zone: 'map',
+  zone: 'map-controls',
   mapPinId: null,
-  mapControlTarget: 'pan-up',
+  mapControlTarget: 'fullscreen',
+  dockTarget: 'fullscreen',
   chronicleIndex: 0,
   panelTabIndex: 0,
   tripCardTarget: 'chronicle',
@@ -171,6 +178,7 @@ export function TvFocusProvider({
   const archiveActionsRef = useRef<TvArchiveActions | null>(null);
   const importDialogRef = useRef<TvImportDialogState | null>(null);
   const mapViewportActionsRef = useRef<MapViewportActions | null>(null);
+  const tvFocusBootstrappedRef = useRef(false);
 
   const registerChronicleScroller = useCallback((fn: (index: number) => void) => {
     chronicleScrollRef.current = fn;
@@ -199,11 +207,23 @@ export function TvFocusProvider({
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      tvFocusBootstrappedRef.current = false;
+      return;
+    }
+
     setState((prev) => ({
       ...prev,
       mapPinId: ensureMapPin(prev.mapPinId),
+      ...(tvFocusBootstrappedRef.current
+        ? {}
+        : {
+            zone: 'map-controls',
+            mapControlTarget: 'fullscreen',
+          }),
     }));
+
+    tvFocusBootstrappedRef.current = true;
   }, [enabled, ensureMapPin, trips.length]);
 
   useEffect(() => {
@@ -252,17 +272,26 @@ export function TvFocusProvider({
         onResetIdle();
 
         if (prev.zone === 'dock') {
-          if (direction === 'up' || direction === 'left') {
+          if (direction === 'left') {
+            if (prev.dockTarget === 'settings') {
+              return { ...prev, dockTarget: 'fullscreen' };
+            }
             return { ...prev, zone: 'map', mapPinId: ensureMapPin(prev.mapPinId) };
           }
-          if (direction === 'right' && panelTab) {
-            return { ...prev, zone: panelTab === 'sketchbook' ? 'chronicle' : 'panel-header' };
-          }
           if (direction === 'right') {
+            if (prev.dockTarget === 'fullscreen') {
+              return { ...prev, dockTarget: 'settings' };
+            }
+            if (panelTab) {
+              return { ...prev, zone: panelTab === 'sketchbook' ? 'chronicle' : 'panel-header' };
+            }
             onOpenPanel('sketchbook');
             return { ...prev, zone: 'chronicle', chronicleIndex: 0, panelTabIndex: 0 };
           }
-          return { ...prev, zone: 'map', mapPinId: ensureMapPin(prev.mapPinId) };
+          if (direction === 'up') {
+            return { ...prev, zone: 'map', mapPinId: ensureMapPin(prev.mapPinId) };
+          }
+          return prev;
         }
 
         if (prev.zone === 'map-controls') {
@@ -270,10 +299,10 @@ export function TvFocusProvider({
           if (next === 'close-cards' && openTripIds.length === 0) {
             next =
               direction === 'right'
-                ? undefined
+                ? 'fullscreen'
                 : direction === 'left'
                   ? 'reset'
-                  : next;
+                  : undefined;
           }
           if (next) {
             return { ...prev, mapControlTarget: next };
@@ -324,7 +353,7 @@ export function TvFocusProvider({
           }
 
           if (direction === 'left') {
-            return { ...prev, zone: 'dock', mapPinId: currentId };
+            return { ...prev, zone: 'dock', mapPinId: currentId, dockTarget: 'fullscreen' };
           }
 
           const nextId = findNearestInDirection(current, points, direction);
@@ -447,6 +476,10 @@ export function TvFocusProvider({
     onResetIdle();
 
     if (state.zone === 'dock') {
+      if (state.dockTarget === 'fullscreen') {
+        mapViewportActionsRef.current?.toggleFullscreen();
+        return;
+      }
       onOpenPanel(panelTab ?? 'settings');
       setState((s) => ({
         ...s,
@@ -499,6 +532,9 @@ export function TvFocusProvider({
         case 'close-cards':
           actions.closeAll();
           setState((s) => ({ ...s, zone: 'map' }));
+          break;
+        case 'fullscreen':
+          actions.toggleFullscreen();
           break;
         default:
           break;
@@ -656,7 +692,7 @@ export function useTvFocus(): TvFocusContextValue {
       isDockFocused: false,
       isTripCardFocused: false,
       tripCardTarget: 'chronicle',
-      mapControlTarget: 'pan-up',
+      mapControlTarget: 'fullscreen',
       isMapControlFocused: () => false,
       registerChronicleScroller: () => {},
       registerArchiveActions: () => {},

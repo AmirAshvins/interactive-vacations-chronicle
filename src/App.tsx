@@ -81,9 +81,11 @@ function TravelogueApp({
     isTvScreensaver,
     mapSettings,
     homeCityKey,
+    mapPinStyle,
     setMaterialMode,
     setHomeCityKey,
     setMapSettings,
+    setMapPinStyle,
   } = appSettings;
 
   const travelogue = useTravelogueStore({
@@ -352,6 +354,7 @@ function TravelogueApp({
         onPinScreenPositionsChange={tvInteraction ? setPinScreenPositions : undefined}
         onCountriesLoaded={handleCountriesLoaded}
         materialMode={materialMode}
+        mapPinStyle={mapPinStyle}
         isOverlayVisible={isOverlayVisible}
         onMapClick={resetIdleTimer}
         openTripCount={openTripIds.length}
@@ -447,6 +450,11 @@ function TravelogueApp({
         onToggleHighlightVisited={() =>
           setMapSettings((s) => ({ ...s, highlightVisited: !s.highlightVisited }))
         }
+        mapPinStyle={mapPinStyle}
+        onMapPinStyleChange={(style) => {
+          setMapPinStyle(style);
+          resetIdleTimer();
+        }}
       />
 
       {(!panelTab || !mobileLayout) &&
@@ -485,7 +493,7 @@ function TravelogueApp({
             />
           );
         })}
-      <EnvironmentDebugBar />
+      <EnvironmentDebugBar isOverlayVisible={isOverlayVisible} />
     </div>
   );
 

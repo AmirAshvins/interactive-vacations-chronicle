@@ -69,6 +69,34 @@ export function getFlightDashStyle(flightId: string, denseLayer: boolean): Fligh
   };
 }
 
+export function getFlightDashStyleForZoom(
+  flightId: string,
+  denseLayer: boolean,
+  zoom: number,
+): FlightDashStyle {
+  const base = getFlightDashStyle(flightId, denseLayer);
+  const scale = 1 / Math.max(1, zoom);
+  const [dash, gap] = base.strokeDasharray.split(' ').map(Number);
+
+  return {
+    strokeDasharray: `${(dash * scale).toFixed(2)} ${(gap * scale).toFixed(2)}`,
+    strokeDashoffset: Number((base.strokeDashoffset * scale).toFixed(2)),
+    opacity: base.opacity,
+  };
+}
+
+/** Keep arc stroke visually thin as the map zoom transform scales the layer up. */
+export function getFlightStrokeScale(zoom: number): number {
+  return 1 / Math.max(1, zoom);
+}
+
+/** Counter map zoom so planes stay visible; slightly larger when zoomed in. */
+export function getFlightPlaneScale(zoom: number): number {
+  const counter = 1 / Math.max(1, zoom);
+  const boost = 1 + Math.min(0.5, (zoom - 1) * 0.2);
+  return counter * 0.92 * boost;
+}
+
 /**
  * Flight route in map SVG space: a visible quadratic arc (great-circle feel on the flat map).
  * Bulge direction varies per route so paths from the same hub do not look identical.

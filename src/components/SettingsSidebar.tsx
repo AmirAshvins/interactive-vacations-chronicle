@@ -5,6 +5,7 @@ import { Sun, Moon, Clock, Layers, MapPin, X, Plane, Globe } from 'lucide-react'
 import ToggleSwitch from './ToggleSwitch';
 import HomeCityPicker from './HomeCityPicker';
 import EnvironmentControls from './EnvironmentControls';
+import { MAP_PIN_STYLES, type MapPinStyleId } from '../data/mapPinStyles';
 
 interface SettingsSidebarProps {
   embedded?: boolean;
@@ -26,6 +27,8 @@ interface SettingsSidebarProps {
   onToggleFlightPaths?: () => void;
   highlightVisited?: boolean;
   onToggleHighlightVisited?: () => void;
+  mapPinStyle?: MapPinStyleId;
+  onMapPinStyleChange?: (style: MapPinStyleId) => void;
   isOverlayVisible?: boolean;
 }
 
@@ -49,6 +52,8 @@ export default function SettingsSidebar({
   onToggleFlightPaths,
   highlightVisited = true,
   onToggleHighlightVisited,
+  mapPinStyle = 'needle-red',
+  onMapPinStyleChange,
   isOverlayVisible = true,
 }: SettingsSidebarProps) {
   
@@ -256,7 +261,45 @@ export default function SettingsSidebar({
         {/* WIDGET 4: ENVIRONMENT & DISPLAY */}
         <EnvironmentControls isDarkPhase={isDarkPhase} />
 
-        {/* WIDGET 5: MAP OVERLAYS */}
+        {/* WIDGET 5: MAP PIN STYLE */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
+            <MapPin size={9} className="text-[#a58452]" />
+            <span>Map Pins</span>
+          </div>
+          <div
+            className={`grid grid-cols-2 gap-2 rounded-2xl border p-3 ${
+              isDarkPhase ? 'bg-black/10 border-white/5' : 'bg-[#fcfbf9]/60 border-black/5'
+            }`}
+          >
+            {MAP_PIN_STYLES.map((style) => {
+              const selected = mapPinStyle === style.id;
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => onMapPinStyleChange?.(style.id)}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition-all ${
+                    selected
+                      ? 'border-[#a58452] bg-[#a58452]/12'
+                      : isDarkPhase
+                        ? 'border-white/5 hover:border-white/15'
+                        : 'border-black/5 hover:border-black/10'
+                  }`}
+                >
+                  <span className="block text-[9px] font-semibold uppercase tracking-wider">
+                    {style.label}
+                  </span>
+                  <span className="mt-0.5 block text-[8px] font-light leading-snug opacity-45">
+                    {style.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* WIDGET 6: MAP OVERLAYS */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.25em] opacity-40 font-semibold font-sans">
             <Globe size={9} className="text-[#a58452]" />

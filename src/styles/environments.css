@@ -74,6 +74,35 @@
   --mobile-sheet-offset: var(--mobile-sheet-height);
 }
 
+html.map-sheet-expanded.env-mobile-layout {
+  --mobile-sheet-height: 100dvh;
+}
+
+html.map-sheet-expanded.env-mobile-layout.map-panel-open {
+  --mobile-sheet-offset: 100dvh;
+}
+
+.env-mobile-layout .right-panel.right-panel--expanded {
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+.env-mobile-layout .right-panel-sheet-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  text-align: center;
+}
+
+.env-mobile-layout .trip-detail-card {
+  max-height: min(100dvh, 100%);
+}
+
 .env-mobile-layout .control-dock {
   left: 50%;
   right: auto;
@@ -273,4 +302,17 @@
 
 .env-desktop-layout .control-dock {
   right: clamp(20px, 3vw, 32px);
+}
+
+/* TV / living-room — map fills the screen */
+.env-tv-interaction .map-stage,
+.env-detected-tv .map-stage {
+  inset: 0;
+}
+
+.env-tv-interaction .map-aspect-box,
+.env-detected-tv .map-aspect-box {
+  width: min(100%, calc(100dvh * 1.71));
+  height: min(100%, calc(100vw / 1.71));
+  max-width: none;
 }

@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
-import { Minus, Plus, RotateCcw, X } from 'lucide-react';
+import { Maximize2, Minimize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import type { MapControlTarget } from '../context/TvFocusContext';
 
 interface MapViewportControlsProps {
   showPanZoom: boolean;
   showReset: boolean;
   showCloseAll: boolean;
+  showFullscreen: boolean;
+  isFullscreen: boolean;
   openTripCount: number;
   isOverlayVisible: boolean;
   tvInteraction: boolean;
@@ -15,6 +17,7 @@ interface MapViewportControlsProps {
   onPan: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onReset: () => void;
   onCloseAll: () => void;
+  onToggleFullscreen: () => void;
 }
 
 function ControlBtn({
@@ -53,6 +56,8 @@ export default function MapViewportControls({
   showPanZoom,
   showReset,
   showCloseAll,
+  showFullscreen,
+  isFullscreen,
   openTripCount,
   isOverlayVisible,
   tvInteraction,
@@ -62,9 +67,10 @@ export default function MapViewportControls({
   onPan,
   onReset,
   onCloseAll,
+  onToggleFullscreen,
 }: MapViewportControlsProps) {
   if (!isOverlayVisible) return null;
-  if (!showPanZoom && !showReset && !showCloseAll) return null;
+  if (!showPanZoom && !showReset && !showCloseAll && !showFullscreen) return null;
 
   const focus = (target: MapControlTarget) => tvInteraction && focusedControl === target;
 
@@ -161,6 +167,24 @@ export default function MapViewportControls({
           >
             <X size={12} strokeWidth={2} aria-hidden />
             Close cards ({openTripCount})
+          </button>
+        )}
+        {showFullscreen && (
+          <button
+            type="button"
+            className={`map-hud-btn map-hud-btn--text map-fullscreen-btn ${focus('fullscreen') ? 'tv-focused' : ''}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFullscreen();
+            }}
+          >
+            {isFullscreen ? (
+              <Minimize2 size={12} strokeWidth={2} aria-hidden />
+            ) : (
+              <Maximize2 size={12} strokeWidth={2} aria-hidden />
+            )}
+            {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           </button>
         )}
       </div>

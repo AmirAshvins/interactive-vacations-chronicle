@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MapDisplaySettings } from '../types/travelogue';
 import type { EnvironmentOverride } from '../utils/detectEnvironment';
+import type { MapPinStyleId } from '../data/mapPinStyles';
+import { DEFAULT_MAP_PIN_STYLE, normalizeMapPinStyleId } from '../data/mapPinStyles';
 
 const APP_SETTINGS_KEY = 'bedrood-azizi-app-settings';
 
@@ -15,16 +17,17 @@ export interface AppSettings {
   /** Bottom-sheet layout, compact chrome — `auto` follows detected mobile */
   mobileLayout: EnvironmentOverride;
   homeCityKey: string;
+  mapPinStyle: MapPinStyleId;
   map: MapDisplaySettings;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   materialMode: 'auto',
   isTvScreensaver: true,
-  /** `on` while building TV focus nav — switch to `auto` when shipping */
-  tvInteraction: 'on',
+  tvInteraction: 'auto',
   mobileLayout: 'auto',
   homeCityKey: 'toronto',
+  mapPinStyle: DEFAULT_MAP_PIN_STYLE,
   map: {
     showFlightPaths: true,
     highlightVisited: true,
@@ -42,6 +45,7 @@ function migrateSettings(parsed: Partial<AppSettings> & { isTvMode?: boolean }):
     tvInteraction: parsed.tvInteraction ?? DEFAULT_SETTINGS.tvInteraction,
     mobileLayout: parsed.mobileLayout ?? DEFAULT_SETTINGS.mobileLayout,
     map: { ...DEFAULT_SETTINGS.map, ...parsed.map },
+    mapPinStyle: normalizeMapPinStyleId(parsed.mapPinStyle),
   };
 }
 
@@ -92,18 +96,24 @@ export function useAppSettings() {
     setSettings((s) => ({ ...s, homeCityKey }));
   }, []);
 
+  const setMapPinStyle = useCallback((mapPinStyle: MapPinStyleId) => {
+    setSettings((s) => ({ ...s, mapPinStyle }));
+  }, []);
+
   return {
     materialMode: settings.materialMode,
     isTvScreensaver: settings.isTvScreensaver,
     tvInteraction: settings.tvInteraction,
     mobileLayout: settings.mobileLayout,
     homeCityKey: settings.homeCityKey,
+    mapPinStyle: settings.mapPinStyle,
     mapSettings: settings.map,
     setMaterialMode,
     setTvScreensaver,
     setTvInteraction,
     setMobileLayout,
     setHomeCityKey,
+    setMapPinStyle,
     setMapSettings,
   };
 }

@@ -103,7 +103,7 @@ export default function TripDetailCard({
 
   return (
     <div
-      className={`trip-detail-card tv-hud-element fixed flex w-[min(320px,26vw)] flex-col gap-4 rounded-lg border p-0 shadow-2xl ${
+      className={`trip-detail-card tv-hud-element fixed flex max-h-[100dvh] w-[min(320px,26vw)] min-h-0 flex-col rounded-lg border p-0 shadow-2xl ${
         isDarkPhase ? 'trip-detail-dark' : 'trip-detail-light'
       } ${isOverlayVisible ? 'opacity-100' : `pointer-events-none opacity-0 ${cardHiddenClass}`} ${isTvActive ? 'tv-focused-card' : ''}`}
       style={
@@ -154,7 +154,7 @@ export default function TripDetailCard({
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 px-6 pb-6">
+      <div className="trip-detail-card-body flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-5 pb-6 pt-5">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest opacity-50">
             <Navigation size={9} />
