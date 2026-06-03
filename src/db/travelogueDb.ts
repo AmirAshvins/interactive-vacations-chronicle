@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Trip, TravelogueData } from '../types/travelogue';
 import {
   clearAllImages,
@@ -8,7 +8,7 @@ import {
 
 const DB_NAME = 'ivc-travelogue';
 const LEGACY_DB_NAME = 'bedrood-azizi-travelogue';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const META_INITIALIZED = 'initialized';
 
 export interface StoredImageRecord {
@@ -37,41 +37,97 @@ interface TravelogueDB extends DBSchema {
 let dbPromise: Promise<IDBPDatabase<TravelogueDB>> | null = null;
 let legacyMigrationPromise: Promise<void> | null = null;
 
-async function migrateLegacyDatabaseIfNeeded(db: IDBPDatabase<TravelogueDB>): Promise<void> {
-  const initialized = await db.get('meta', META_INITIALIZED);
-  if (initialized) return;
+/** Idempotent — safe to run on fresh installs and partial upgrades. */
+function runTravelogueUpgrade(db: IDBPDatabase<TravelogueDB>) {
+  if (!db.objectStoreNames.contains('trips')) {
+    db.createObjectStore('trips', { keyPath: 'id' });
+  }
+  if (!db.objectStoreNames.contains('meta')) {
+    db.createObjectStore('meta');
+  }
+  if ((db.objectStoreNames as DOMStringList).contains('flights')) {
+    db.deleteObjectStore('flights' as 'trips');
+  }
+  if (!db.objectStoreNames.contains('images')) {
+    const images = db.createObjectStore('images', { keyPath: 'id' });
+    images.createIndex('byTripId', 'tripId');
+  }
+}
 
-  let legacyDb: IDBPDatabase<TravelogueDB> | null = null;
+async function legacyDatabaseExists(): Promise<boolean | 'unknown'> {
+  if (typeof indexedDB.databases === 'function') {
+    const dbs = await indexedDB.databases();
+    return dbs.some((d) => d.name === LEGACY_DB_NAME);
+  }
+  return 'unknown';
+}
+
+async function openLegacyDatabase(): Promise<IDBPDatabase<TravelogueDB> | null> {
+  const exists = await legacyDatabaseExists();
+  if (exists === false) return null;
+
   try {
-    legacyDb = await openDB<TravelogueDB>(LEGACY_DB_NAME, DB_VERSION);
+    return await openDB<TravelogueDB>(LEGACY_DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        runTravelogueUpgrade(db);
+      },
+    });
   } catch {
-    return;
+    return null;
   }
+}
 
-  const legacyInitialized = await legacyDb.get('meta', META_INITIALIZED);
-  if (!legacyInitialized) {
-    legacyDb.close();
-    return;
-  }
+async function migrateLegacyDatabaseIfNeeded(db: IDBPDatabase<TravelogueDB>): Promise<void> {
+  try {
+    const initialized = await db.get('meta', META_INITIALIZED);
+    if (initialized) return;
 
-  const legacyTrips = await legacyDb.getAll('trips');
-  const tx = db.transaction(['trips', 'meta'], 'readwrite');
-  for (const trip of legacyTrips) {
-    await tx.objectStore('trips').put({ ...trip, imageIds: trip.imageIds ?? [] });
-  }
-  await tx.objectStore('meta').put(true, META_INITIALIZED);
-  await tx.done;
+    const legacyDb = await openLegacyDatabase();
+    if (!legacyDb) return;
 
-  if (legacyDb.objectStoreNames.contains('images')) {
-    const legacyImages = await legacyDb.getAll('images');
-    const imageTx = db.transaction(['images'], 'readwrite');
-    for (const image of legacyImages) {
-      await imageTx.objectStore('images').put(image);
+    try {
+      if (!legacyDb.objectStoreNames.contains('meta')) return;
+
+      const legacyInitialized = await legacyDb.get('meta', META_INITIALIZED);
+      if (!legacyInitialized) {
+        const tripCount = legacyDb.objectStoreNames.contains('trips')
+          ? await legacyDb.count('trips')
+          : 0;
+        if (tripCount === 0) {
+          await deleteDB(LEGACY_DB_NAME).catch(() => {});
+        }
+        return;
+      }
+
+      if (!legacyDb.objectStoreNames.contains('trips')) return;
+
+      const legacyTrips = await legacyDb.getAll('trips');
+      const tx = db.transaction(['trips', 'meta'], 'readwrite');
+      for (const trip of legacyTrips) {
+        await tx.objectStore('trips').put({ ...trip, imageIds: trip.imageIds ?? [] });
+      }
+      await tx.objectStore('meta').put(true, META_INITIALIZED);
+      await tx.done;
+
+      if (
+        legacyDb.objectStoreNames.contains('images') &&
+        db.objectStoreNames.contains('images')
+      ) {
+        const legacyImages = await legacyDb.getAll('images');
+        if (legacyImages.length > 0) {
+          const imageTx = db.transaction(['images'], 'readwrite');
+          for (const image of legacyImages) {
+            await imageTx.objectStore('images').put(image);
+          }
+          await imageTx.done;
+        }
+      }
+    } finally {
+      legacyDb.close();
     }
-    await imageTx.done;
+  } catch (err) {
+    console.warn('[travelogue] Legacy migration skipped:', err);
   }
-
-  legacyDb.close();
 }
 
 async function ensureLegacyMigration(db: IDBPDatabase<TravelogueDB>): Promise<void> {
@@ -84,18 +140,8 @@ async function ensureLegacyMigration(db: IDBPDatabase<TravelogueDB>): Promise<vo
 export function getDb() {
   if (!dbPromise) {
     dbPromise = openDB<TravelogueDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
-        if (oldVersion < 1) {
-          db.createObjectStore('trips', { keyPath: 'id' });
-          db.createObjectStore('meta');
-        }
-        if (oldVersion < 2 && (db.objectStoreNames as DOMStringList).contains('flights')) {
-          db.deleteObjectStore('flights' as 'trips');
-        }
-        if (oldVersion < 3) {
-          const images = db.createObjectStore('images', { keyPath: 'id' });
-          images.createIndex('byTripId', 'tripId');
-        }
+      upgrade(db) {
+        runTravelogueUpgrade(db);
       },
     });
   }
@@ -166,4 +212,3 @@ export async function deleteTripRecord(id: string): Promise<void> {
   await deleteImagesForTrip(id);
   await db.delete('trips', id);
 }
-
