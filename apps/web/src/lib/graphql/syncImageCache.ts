@@ -11,5 +11,11 @@ export async function syncTripImageCache(trip: ServerTrip): Promise<void> {
 }
 
 export async function syncTripsImageCache(trips: ServerTrip[]): Promise<void> {
-  await Promise.all(trips.map((t) => syncTripImageCache(t)));
+  for (const trip of trips) {
+    try {
+      await syncTripImageCache(trip);
+    } catch (err) {
+      console.warn('[ivc] trip image cache skipped', trip.id, err);
+    }
+  }
 }

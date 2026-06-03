@@ -1,3 +1,4 @@
+import { isIdbNotFoundError } from './idbSupport';
 import { getDb } from './travelogueDb';
 
 export interface StoredImage {
@@ -14,23 +15,36 @@ function newImageId(tripId: string): string {
   return `img-${tripId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+async function withImagesStore<T>(fn: (db: Awaited<ReturnType<typeof getDb>>) => Promise<T>): Promise<T> {
+  try {
+    const db = await getDb();
+    return await fn(db);
+  } catch (err) {
+    if (isIdbNotFoundError(err)) {
+      console.error('[ivc/idb] images store unavailable', err);
+    }
+    throw err;
+  }
+}
+
 export async function saveImagesForTrip(tripId: string, blobs: Blob[]): Promise<string[]> {
   if (!blobs.length) return [];
-  const db = await getDb();
-  const ids: string[] = [];
-  const tx = db.transaction('images', 'readwrite');
-  for (const blob of blobs) {
-    const id = newImageId(tripId);
-    await tx.store.put({
-      id,
-      tripId,
-      blob,
-      mimeType: blob.type || 'image/jpeg',
-    });
-    ids.push(id);
-  }
-  await tx.done;
-  return ids;
+  return withImagesStore(async (db) => {
+    const ids: string[] = [];
+    const tx = db.transaction('images', 'readwrite');
+    for (const blob of blobs) {
+      const id = newImageId(tripId);
+      await tx.store.put({
+        id,
+        tripId,
+        blob,
+        mimeType: blob.type || 'image/jpeg',
+      });
+      ids.push(id);
+    }
+    await tx.done;
+    return ids;
+  });
 }
 
 export async function saveImageBlob(
@@ -39,14 +53,15 @@ export async function saveImageBlob(
   blob: Blob,
   mimeType = blob.type || 'image/jpeg',
 ): Promise<void> {
-  const db = await getDb();
-  const existing = await db.get('images', id);
-  await db.put('images', {
-    id,
-    tripId,
-    blob,
-    mimeType,
-    remoteUrl: existing?.remoteUrl,
+  await withImagesStore(async (db) => {
+    const existing = await db.get('images', id);
+    await db.put('images', {
+      id,
+      tripId,
+      blob,
+      mimeType,
+      remoteUrl: existing?.remoteUrl,
+    });
   });
 }
 
@@ -55,38 +70,42 @@ export async function saveRemoteImageMeta(
   tripId: string,
   remoteUrl: string,
 ): Promise<void> {
-  const db = await getDb();
-  const existing = await db.get('images', id);
-  await db.put('images', {
-    id,
-    tripId,
-    blob: existing?.blob,
-    mimeType: existing?.mimeType ?? 'image/jpeg',
-    remoteUrl,
+  await withImagesStore(async (db) => {
+    const existing = await db.get('images', id);
+    await db.put('images', {
+      id,
+      tripId,
+      blob: existing?.blob,
+      mimeType: existing?.mimeType ?? 'image/jpeg',
+      remoteUrl,
+    });
   });
 }
 
 export async function deleteImages(imageIds: string[]): Promise<void> {
   if (!imageIds.length) return;
-  const db = await getDb();
-  const tx = db.transaction('images', 'readwrite');
-  for (const id of imageIds) {
-    revokeImageUrl(id);
-    await tx.store.delete(id);
-  }
-  await tx.done;
+  await withImagesStore(async (db) => {
+    const tx = db.transaction('images', 'readwrite');
+    for (const id of imageIds) {
+      revokeImageUrl(id);
+      await tx.store.delete(id);
+    }
+    await tx.done;
+  });
 }
 
 export async function deleteImagesForTrip(tripId: string): Promise<void> {
-  const db = await getDb();
-  const all = await db.getAllFromIndex('images', 'byTripId', tripId);
-  await deleteImages(all.map((img) => img.id));
+  await withImagesStore(async (db) => {
+    const all = await db.getAllFromIndex('images', 'byTripId', tripId);
+    await deleteImages(all.map((img) => img.id));
+  });
 }
 
 export async function getImageRecord(id: string): Promise<StoredImage | null> {
-  const db = await getDb();
-  const record = await db.get('images', id);
-  return record ?? null;
+  return withImagesStore(async (db) => {
+    const record = await db.get('images', id);
+    return record ?? null;
+  });
 }
 
 export async function getImageBlob(id: string): Promise<Blob | null> {
@@ -156,8 +175,9 @@ export async function persistDataUrlsAsImages(tripId: string, dataUrls: string[]
 
 export async function clearAllImages(): Promise<void> {
   revokeAllImageUrls();
-  const db = await getDb();
-  await db.clear('images');
+  await withImagesStore(async (db) => {
+    await db.clear('images');
+  });
 }
 
 export function revokeImageUrl(id: string): void {

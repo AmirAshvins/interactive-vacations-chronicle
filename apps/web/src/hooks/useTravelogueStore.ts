@@ -27,12 +27,20 @@ export function useTravelogueStore(initial: TravelogueData) {
   useEffect(() => {
     let cancelled = false;
 
-    loadTravelogue(initialRef.current).then((loaded) => {
-      if (!cancelled) {
-        setTrips(loaded.trips);
-        setReady(true);
-      }
-    });
+    loadTravelogue(initialRef.current)
+      .then((loaded) => {
+        if (!cancelled) {
+          setTrips(loaded.trips);
+          setReady(true);
+        }
+      })
+      .catch((err) => {
+        console.error('[ivc] local travelogue load failed', err);
+        if (!cancelled) {
+          setTrips(initialRef.current.trips);
+          setReady(true);
+        }
+      });
 
     return () => {
       cancelled = true;
