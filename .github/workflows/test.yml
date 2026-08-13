@@ -1,0 +1,100 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build shared package
+        run: yarn build:shared
+
+      - name: Run unit tests
+        run: yarn test:unit
+
+  integration:
+    name: API integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ivc
+          POSTGRES_PASSWORD: ivc_dev
+          POSTGRES_DB: ivc_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ivc -d ivc_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ivc:ivc_dev@localhost:5432/ivc_dev
+      SESSION_SECRET: ci-test-session-secret-32-chars-min
+      JWT_SECRET: ci-test-jwt-secret-32-characters-min
+      NODE_ENV: test
+      PORT: 4000
+      CORS_ORIGIN: http://localhost:5173
+      PUBLIC_APP_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build shared package
+        run: yarn build:shared
+
+      - name: Run database migrations
+        working-directory: apps/api
+        run: yarn db:migrate
+
+      - name: Build API
+        run: yarn build:api
+
+      - name: Start API server
+        working-directory: apps/api
+        run: |
+          yarn start &
+          echo $! > /tmp/ivc-api.pid
+
+      - name: Run API integration tests
+        run: yarn test:integration
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/ivc-api.pid ]; then
+            kill "$(cat /tmp/ivc-api.pid)" || true
+          fi

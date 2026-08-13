@@ -28,6 +28,13 @@
     "test:push": "yarn workspace @ivc/api test:push",
     "test:tv": "yarn workspace @ivc/api test:tv",
     "test:import": "yarn workspace @ivc/api test:import",
-    "test:detect-env": "yarn workspace @ivc/api test:detect-env"
+    "test:detect-env": "yarn workspace @ivc/api test:detect-env",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "yarn workspace @ivc/api test:integration"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   }
 }

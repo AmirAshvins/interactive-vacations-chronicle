@@ -17,7 +17,9 @@
     "test:push": "tsx scripts/test-push-changes.mts",
     "test:tv": "tsx scripts/test-tv-pairing.mts",
     "test:import": "tsx scripts/test-import-chronicle.mts",
-    "test:detect-env": "tsx ../web/scripts/test-detect-environment.mts"
+    "test:detect-env": "tsx ../web/scripts/test-detect-environment.mts",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:integration": "tsx scripts/run-integration-tests.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",
